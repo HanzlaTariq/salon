@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+/* Design tokens (mirror packages/design-tokens/tokens.json) */
+:root {
+  --color-ink: #0f0f12;
+  --color-ivory: #faf8f5;
+  --color-sand: #efeae2;
+  --color-line: #e3ddd2;
+  --color-gold: #b08d57;
+  --color-gold-hover: #9a7a49;
+  --color-emerald: #1f6f5c;
+  --color-danger: #b3261e;
+  --color-warning: #b26a00;
+  --color-info: #2f5d8a;
+  --color-muted: #5f5b54;
+  --color-bg: var(--color-ivory);
+  --color-surface: #ffffff;
+  --color-fg: var(--color-ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #16161a;
+    --color-surface: #1e1e23;
+    --color-sand: #26262c;
+    --color-line: #3a3a42;
+    --color-fg: var(--color-ivory);
+    --color-muted: #b4afa6;
+  }
+}
+
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-sand: var(--color-sand);
+  --color-line: var(--color-line);
+  --color-fg: var(--color-fg);
+  --color-muted: var(--color-muted);
+  --color-gold: var(--color-gold);
+  --color-gold-hover: var(--color-gold-hover);
+  --color-emerald: var(--color-emerald);
+  --color-danger: var(--color-danger);
+  --color-warning: var(--color-warning);
+  --color-info: var(--color-info);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --radius-input: 8px;
+  --radius-card: 12px;
+  --radius-sheet: 20px;
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 12px rgb(0 0 0 / 0.05);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,23 @@
+// Phase 1 foundation. Domain models are added per phase in their own files
+// (auth.prisma, salon.prisma, booking.prisma, billing.prisma, ...).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Super Admin–managed global configuration (maintenance mode, grace periods, payment
+/// instructions, ...). Values are validated against a per-key schema in the settings module.
+model PlatformSetting {
+  key       String   @id @db.VarChar(100)
+  value     Json
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("platform_settings")
+}

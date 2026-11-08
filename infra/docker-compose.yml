@@ -1,0 +1,28 @@
+# Local development services. Run from repo root:  docker compose -f infra/docker-compose.yml up -d
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: salon
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_dev_only
+      TZ: UTC
+    ports: ["127.0.0.1:5432:5432"]   # bound to localhost only
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d salon"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["127.0.0.1:6379:6379"]
+    volumes: [redisdata:/data]
+
+volumes:
+  pgdata:
+  redisdata:
