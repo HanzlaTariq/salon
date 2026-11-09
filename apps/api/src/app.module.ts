@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { randomUUID } from 'crypto';
 import { LoggerModule } from 'nestjs-pino';
+import { buildThrottlerOptions } from './common/rate-limit/throttler.config';
 import { TenancyModule } from './common/tenancy/tenancy.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
 import { AppConfigModule } from './config/config.module';
@@ -44,7 +45,7 @@ const env = parseEnv();
           env.NODE_ENV === 'development' ? { target: 'pino-pretty', options: { singleLine: true } } : undefined,
       },
     }),
-    ThrottlerModule.forRoot([{ ttl: env.RATE_LIMIT_TTL_MS, limit: env.RATE_LIMIT_MAX }]),
+    ThrottlerModule.forRoot(buildThrottlerOptions(env)),
     PrismaModule,
     TenancyModule,
     AuditModule,

@@ -1,0 +1,47 @@
+PHASE 2b CHANGES (extract this zip over your salon-main\ folder; same paths, overwrite)
+
+== UPDATED (overwrite) ==
+apps/api/.env.example
+apps/api/package.json
+apps/api/package-lock.json
+apps/api/src/app.module.ts
+apps/api/src/config/env.ts
+apps/api/src/config/env.spec.ts
+apps/api/src/modules/auth/auth.service.ts
+apps/api/test/support/harness.ts
+apps/customer_app/lib/main.dart
+docs/security/risk-register.md
+packages/flutter_core/pubspec.yaml
+packages/flutter_core/lib/flutter_core.dart
+
+== NEW ==
+apps/api/src/common/rate-limit/redis-throttler.storage.ts
+apps/api/src/common/rate-limit/redis-throttler.storage.spec.ts
+apps/api/src/common/rate-limit/throttler.config.ts
+apps/api/src/modules/auth/breach-check.ts
+apps/api/src/modules/auth/breach-check.spec.ts
+apps/business_app/README.md
+apps/business_app/analysis_options.yaml
+apps/business_app/lib/main.dart
+apps/business_app/pubspec.yaml
+packages/flutter_core/analysis_options.yaml
+packages/flutter_core/lib/src/auth/ (auth.dart, auth_api.dart, auth_config.dart, auth_errors.dart, auth_gate.dart, auth_models.dart, auth_repository.dart, auth_screen.dart, signed_in_home.dart, token_store.dart)
+packages/flutter_core/test/auth_repository_test.dart
+docs/PHASE2B.md
+PHASE2B_CHANGES.txt
+
+== AFTER EXTRACTING (commands) ==
+Windows PowerShell:
+  cd apps\api; npm install; npx prisma generate; npm run typecheck; npm test
+  cd ..\..\packages\flutter_core; flutter pub get; flutter analyze; flutter test
+  cd ..\..\apps\business_app; flutter create --platforms=android,ios --project-name salon_business --org com.yourorg .; flutter pub get
+
+Windows CMD: same commands, one per line.
+
+== NOT RUN IN THE BUILD ENVIRONMENT (run them, see docs/PHASE2B.md) ==
+- npm run test:e2e (needs PostgreSQL + Prisma engine; R14)
+- flutter analyze / flutter test (no Flutter SDK there; R12)
+- Redis-backed throttling against a real Redis instance
+
+== DATABASE ==
+No migrations in Phase 2b. No schema changes.

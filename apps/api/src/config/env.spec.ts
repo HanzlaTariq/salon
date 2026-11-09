@@ -14,6 +14,7 @@ const prod = {
   WEB_APP_URL: 'https://admin.example.com',
   MAIL_TRANSPORT: 'smtp',
   SMTP_HOST: 'smtp.example.com',
+  REDIS_URL: 'rediss://default:x@redis.example.com:6380',
 };
 
 describe('parseEnv', () => {
@@ -64,6 +65,21 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...prod, WEB_APP_URL: 'http://x.com' } as NodeJS.ProcessEnv)).toThrow(/WEB_APP_URL/);
     expect(() => parseEnv({ ...prod, MAIL_TRANSPORT: 'console' } as NodeJS.ProcessEnv)).toThrow(/MAIL_TRANSPORT/);
     expect(() => parseEnv({ ...prod, REQUIRE_ADMIN_MFA: 'false' } as NodeJS.ProcessEnv)).toThrow(/REQUIRE_ADMIN_MFA/);
+  });
+
+  it('requires REDIS_URL in production (shared rate limits)', () => {
+    const { REDIS_URL: _omit, ...noRedis } = prod;
+    expect(() => parseEnv(noRedis as NodeJS.ProcessEnv)).toThrow(/REDIS_URL/);
+  });
+
+  it('keeps REDIS_URL optional outside production', () => {
+    expect(parseEnv({ ...base } as NodeJS.ProcessEnv).REDIS_URL).toBeUndefined();
+  });
+
+  it('enables the breached-password check by default and fails open', () => {
+    const env = parseEnv({ ...base } as NodeJS.ProcessEnv);
+    expect(env.HIBP_CHECK_ENABLED).toBe(true);
+    expect(env.HIBP_FAIL_CLOSED).toBe(false);
   });
 
   it('requires SMTP_HOST when using the smtp transport', () => {

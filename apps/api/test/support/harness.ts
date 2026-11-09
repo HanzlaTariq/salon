@@ -8,6 +8,8 @@ process.env.MFA_ENCRYPTION_KEY = Buffer.alloc(32, 9).toString('base64');
 process.env.ARGON2_MEMORY_KIB = '8192'; // fast hashing in tests only
 process.env.ARGON2_TIME_COST = '1';
 process.env.RATE_LIMIT_MAX = '100000';
+process.env.HIBP_CHECK_ENABLED = 'false'; // no outbound calls from tests (unit-tested separately)
+delete process.env.REDIS_URL; // tests use the in-memory limiter
 process.env.WEB_APP_URL = 'https://admin.example.test';
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgresql://x:x@localhost:5432/x';
 

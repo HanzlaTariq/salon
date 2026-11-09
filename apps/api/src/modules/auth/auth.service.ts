@@ -15,6 +15,7 @@ import { MailService } from './mail/mail.service';
 import { MfaCrypto } from './mfa-crypto';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
+import { checkPasswordBreach } from './breach-check';
 import { generateTotpSecret, otpauthUri, verifyTotp } from './totp';
 
 const MS_DAY = 86_400_000;
@@ -80,6 +81,7 @@ export class AuthService {
       throw new AppException('VALIDATION_FAILED', 'Request validation failed.', 400, ['phone is not a valid phone number']);
     }
     this.assertPasswordPolicy(dto.password, { email: dto.email, fullName: dto.fullName });
+    await this.assertNotBreached(dto.password);
 
     const passwordHash = await this.passwords.hash(dto.password);
     const user = await this.repo.createUser({
@@ -263,6 +265,7 @@ export class AuthService {
 
     // Validate BEFORE spending the single-use token so a weak password does not burn the link.
     this.assertPasswordPolicy(newPassword, { email: user.email, fullName: user.fullName });
+    await this.assertNotBreached(newPassword);
 
     const userId = await this.repo.consumeAuthToken(hash, 'PASSWORD_RESET', now);
     if (!userId || userId !== user.id) throw new AppException('TOKEN_INVALID', 'This link is invalid or has expired.', 400);
@@ -283,6 +286,7 @@ export class AuthService {
       throw new AppException('VALIDATION_FAILED', 'Request validation failed.', 400, ['New password must differ from the current one.']);
     }
     this.assertPasswordPolicy(dto.newPassword, { email: user.email, fullName: user.fullName });
+    await this.assertNotBreached(dto.newPassword);
     const now = this.clock.now();
     await this.repo.setPassword(user.id, await this.passwords.hash(dto.newPassword), now);
     await this.repo.revokeAllSessions(user.id, 'PASSWORD_CHANGED', now, actor.sessionId);
@@ -351,6 +355,23 @@ export class AuthService {
     const u = await this.repo.findUserById(id);
     if (!u) throw new AppException('UNAUTHENTICATED', 'Account not found.', 401);
     return u;
+  }
+
+  /**
+   * Refuses passwords found in known breach corpora (k-anonymity: only a hash prefix is sent).
+   * Runs after the local policy so an obviously weak password never costs an outbound call.
+   */
+  private async assertNotBreached(password: string): Promise<void> {
+    if (!this.env.HIBP_CHECK_ENABLED) return;
+    const result = await checkPasswordBreach(password);
+    if (result === 'breached') {
+      throw new AppException('VALIDATION_FAILED', 'Password does not meet requirements.', 400, [
+        'This password appears in known data breaches. Please choose a different one.',
+      ]);
+    }
+    if (result === 'unknown' && this.env.HIBP_FAIL_CLOSED) {
+      throw new AppException('SERVICE_UNAVAILABLE', 'Password check is unavailable. Please try again shortly.', 503);
+    }
   }
 
   private assertPasswordPolicy(password: string, ctx: { email: string; fullName: string }): void {

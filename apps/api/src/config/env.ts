@@ -28,6 +28,12 @@ const schema = z.object({
   RATE_LIMIT_TTL_MS: z.coerce.number().int().positive().default(60_000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
   ENABLE_SWAGGER: bool('false'),
+  /** Shared rate-limit counters (risk R5). Required in production; optional for dev/tests (in-memory). */
+  REDIS_URL: z.string().url().optional(),
+  /** Breached-password check via HIBP k-anonymity range API (only a 5-char SHA-1 prefix leaves the server). */
+  HIBP_CHECK_ENABLED: bool('true'),
+  /** If true, a password is refused when the HIBP service cannot be reached. Default: allow (availability). */
+  HIBP_FAIL_CLOSED: bool('false'),
 
   // ---- Phase 2: authentication ----
   /** Number of reverse proxies in front of the API (so req.ip, and therefore rate limits, are correct). */
@@ -80,6 +86,7 @@ export function parseEnv(raw: NodeJS.ProcessEnv = process.env): Env {
     if (!env.WEB_APP_URL.startsWith('https://')) problems.push('WEB_APP_URL: must use https:// in production');
     if (env.MAIL_TRANSPORT !== 'smtp') problems.push('MAIL_TRANSPORT: must be smtp in production');
     if (!env.REQUIRE_ADMIN_MFA) problems.push('REQUIRE_ADMIN_MFA: must be true in production');
+    if (!env.REDIS_URL) problems.push('REDIS_URL: required in production (shared rate limits, risk R5)');
   }
   if (env.MAIL_TRANSPORT === 'smtp' && !env.SMTP_HOST) problems.push('SMTP_HOST: required when MAIL_TRANSPORT=smtp');
   if (problems.length > 0) throw new Error(`Invalid environment configuration:\n  - ${problems.join('\n  - ')}`);
