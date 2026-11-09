@@ -38,7 +38,16 @@ export type AuthTokenType = 'EMAIL_VERIFICATION' | 'PASSWORD_RESET';
 export type RefreshOutcome =
   | { outcome: 'ok'; sessionId: string; userId: string }
   | { outcome: 'reused'; sessionId: string; userId: string }
+  /** Same token presented again within the grace window: a parallel/retried request, NOT theft. */
+  | { outcome: 'concurrent' }
   | { outcome: 'invalid' };
+
+/**
+ * A rotated refresh token presented again within this window is treated as a concurrent request
+ * (two tabs, a client retry), not as theft: it is rejected but the session is NOT revoked.
+ * Beyond the window, replay still revokes the whole session.
+ */
+export const REFRESH_REUSE_GRACE_MS = 10_000;
 
 interface UserRow {
   id: string;
@@ -261,7 +270,11 @@ export class AuthRepository {
       SELECT r.session_id, s.user_id, r.used_at FROM refresh_tokens r
       JOIN auth_sessions s ON s.id = r.session_id
       WHERE r.token_hash = ${tokenHash}::varchar`;
-    if (prior[0]?.used_at) return { outcome: 'reused', sessionId: prior[0].session_id, userId: prior[0].user_id };
+    if (prior[0]?.used_at) {
+      const ageMs = now.getTime() - new Date(prior[0].used_at).getTime();
+      if (ageMs < REFRESH_REUSE_GRACE_MS) return { outcome: 'concurrent' };
+      return { outcome: 'reused', sessionId: prior[0].session_id, userId: prior[0].user_id };
+    }
     return { outcome: 'invalid' };
   }
 

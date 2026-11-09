@@ -176,6 +176,8 @@ export class AuthService {
       await this.audit.recordSafe({ actorUserId: r.userId, action: 'auth.refresh_reuse_detected', targetType: 'session', targetId: r.sessionId, ...this.ctxFields(ctx) });
       throw new AppException('TOKEN_INVALID', 'Session is no longer valid. Please sign in again.', 401);
     }
+    // Parallel request with the same token: the winner keeps the session, this one is simply refused.
+    if (r.outcome === 'concurrent') throw new AppException('UNAUTHENTICATED', 'Session is no longer valid. Please sign in again.', 401);
     if (r.outcome === 'invalid') throw new AppException('UNAUTHENTICATED', 'Session is no longer valid. Please sign in again.', 401);
 
     const active = await this.repo.findActiveSession(r.sessionId, now);

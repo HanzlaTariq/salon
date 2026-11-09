@@ -145,6 +145,7 @@ d('Phase 2: authentication & authorization (real PostgreSQL)', () => {
       expect(rt2).not.toBe(rt1);
       await h.http().get('/api/v1/auth/me').set(bearer(r2.body.data.accessToken)).expect(200);
 
+      h.clock.advance(15_000); // outside the concurrent-request grace window => real replay
       const replay = await h.http().post('/api/v1/auth/refresh').set(web).set('Cookie', `rt=${rt1}`);
       expect(replay.status).toBe(401);
       // the legitimate newest token and its access token are dead too
@@ -184,7 +185,10 @@ d('Phase 2: authentication & authorization (real PostgreSQL)', () => {
       const { email, password } = await registerAndVerify(h);
       const rt = (await loginMobile(h, email, password)).body.data.refreshToken as string;
       const results = await Promise.all([1, 2, 3].map(() => h.http().post('/api/v1/auth/refresh').set(mobile).send({ refreshToken: rt })));
-      expect(results.filter((r) => r.status === 200)).toHaveLength(1);
+      const winners = results.filter((r) => r.status === 200);
+      expect(winners).toHaveLength(1);
+      // the parallel losers must NOT have killed the winner's session
+      await h.http().post('/api/v1/auth/refresh').set(mobile).send({ refreshToken: winners[0].body.data.refreshToken }).expect(200);
     });
 
     it('refresh tokens expire', async () => {
