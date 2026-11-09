@@ -271,7 +271,7 @@ class _AuthScreenState extends State<AuthScreen> {
 enum _BannerTone { info, danger }
 
 class _Banner extends StatelessWidget {
-  const _Banner({super.key, required this.text, required this.tone, this.details = const []});
+  const _Banner({required this.text, required this.tone, this.details = const []});
 
   final String text;
   final List<String> details;
