@@ -1,0 +1,14 @@
+SUPABASE CHANGES (zip ko salon-main/ folder ke upar extract karo, same paths, overwrite)
+
+== UPDATED ==
+.github/workflows/ci.yml
+README.md
+apps/api/.env.example
+apps/api/prisma/schema/base.prisma
+
+== NEW ==
+infra/supabase/01-roles.sql
+docs/SUPABASE.md
+SUPABASE_CHANGES.txt
+
+Steps: docs/SUPABASE.md

@@ -12,6 +12,8 @@ infra                 docker-compose + Postgres role bootstrap
 
 ## Backend quick start
 
+> **Database = Supabase.** Follow `docs/SUPABASE.md` (roles script: `infra/supabase/01-roles.sql`). The docker steps below are only for local/CI Postgres.
+
 ```bash
 # 1. Services (Postgres+PostGIS, Redis)
 docker compose -f infra/docker-compose.yml up -d
@@ -22,7 +24,7 @@ cp .env.example .env
 npm install
 npx prisma generate
 # migrations run as the privileged migrator role:
-DATABASE_URL="$(grep MIGRATION_DATABASE_URL .env | cut -d= -f2-)" npx prisma migrate deploy
+npx prisma migrate deploy   # uses DIRECT_URL from .env
 npm run start:dev
 ```
 

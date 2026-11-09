@@ -7,7 +7,10 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Runtime: Supabase pooler (transaction mode, port 6543) as the least-privilege `salon_app` role.
+  url       = env("DATABASE_URL")
+  // Migrations: direct / session-mode connection (port 5432) as the `postgres` owner role.
+  directUrl = env("DIRECT_URL")
 }
 
 /// Super Admin–managed global configuration (maintenance mode, grace periods, payment
