@@ -48,3 +48,6 @@ cd apps/customer_app   # created via: flutter create --org com.yourorg --project
 # then in main.dart: theme: AppTheme.light(), darkTheme: AppTheme.dark()
 ```
 Requires Flutter >= 3.27.
+
+## Phase 2 (authentication)
+See `docs/PHASE2.md` for setup (`MFA_ENCRYPTION_KEY`, `JWT_ACCESS_SECRET`, `npm run admin:create`) and tests.

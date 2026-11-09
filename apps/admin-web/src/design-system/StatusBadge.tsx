@@ -7,7 +7,9 @@ export type Status =
   | 'no_show'
   | 'approved'
   | 'rejected'
-  | 'suspended';
+  | 'suspended'
+  | 'active'
+  | 'unverified';
 
 /** One consistent color + label per status across the whole product. Icon-free but text-labelled (not color-only). */
 const map: Record<Status, { label: string; cls: string }> = {
@@ -20,6 +22,8 @@ const map: Record<Status, { label: string; cls: string }> = {
   approved: { label: 'Approved', cls: 'bg-emerald/15 text-emerald' },
   rejected: { label: 'Rejected', cls: 'bg-danger/15 text-danger' },
   suspended: { label: 'Suspended', cls: 'bg-sand text-muted' },
+  active: { label: 'Active', cls: 'bg-emerald/15 text-emerald' },
+  unverified: { label: 'Unverified', cls: 'bg-warning/15 text-warning' },
 };
 
 export function StatusBadge({ status }: { status: Status }) {

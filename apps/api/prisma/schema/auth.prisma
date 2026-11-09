@@ -1,0 +1,145 @@
+// Phase 2: identity, sessions, one-time tokens, MFA recovery codes, audit trail.
+// Hand-written SQL in migrations/20261109000000_auth_foundation is the source of truth for
+// CHECK constraints, the immutable-audit trigger and privilege grants (Prisma cannot express them).
+
+enum UserRole {
+  SUPER_ADMIN
+  SUPPORT
+  FINANCE
+  SALON_OWNER
+  SALON_STAFF
+  CUSTOMER
+
+  @@map("user_role")
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+
+  @@map("user_status")
+}
+
+enum AuthTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+
+  @@map("auth_token_type")
+}
+
+model User {
+  id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Always stored lower-case (enforced by a CHECK constraint).
+  email             String     @unique @db.VarChar(254)
+  /// E.164. Not unique and not yet verified (phone/SMS verification needs a provider decision).
+  phone             String?    @db.VarChar(20)
+  passwordHash      String     @map("password_hash") @db.VarChar(255)
+  fullName          String     @map("full_name") @db.VarChar(120)
+  role              UserRole
+  status            UserStatus @default(PENDING_VERIFICATION)
+  emailVerifiedAt   DateTime?  @map("email_verified_at") @db.Timestamptz(6)
+  failedLoginCount  Int        @default(0) @map("failed_login_count")
+  lockedUntil       DateTime?  @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt       DateTime?  @map("last_login_at") @db.Timestamptz(6)
+  passwordChangedAt DateTime?  @map("password_changed_at") @db.Timestamptz(6)
+  /// AES-256-GCM envelope (see MfaCrypto). Set at setup; mfaEnabledAt is set once a code is confirmed.
+  mfaSecretEnc      String?    @map("mfa_secret_enc") @db.VarChar(512)
+  mfaEnabledAt      DateTime?  @map("mfa_enabled_at") @db.Timestamptz(6)
+  /// Last accepted TOTP time-step; a code for a step <= this value is rejected (replay protection).
+  mfaLastStep       Int?       @map("mfa_last_step")
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sessions      AuthSession[]
+  authTokens    AuthToken[]
+  recoveryCodes MfaRecoveryCode[]
+
+  @@index([role, status])
+  @@map("users")
+}
+
+/// One row per login (device). Its id is the `sid` claim of every access token issued for it.
+model AuthSession {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastUsedAt    DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(6)
+  /// Absolute lifetime: the session cannot be refreshed past this moment.
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason String?   @map("revoked_reason") @db.VarChar(40)
+  userAgent     String?   @map("user_agent") @db.VarChar(300)
+  ipAddress     String?   @map("ip_address") @db.VarChar(45)
+  mfaVerified   Boolean   @default(false) @map("mfa_verified")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([userId, revokedAt])
+  @@map("auth_sessions")
+}
+
+/// Opaque rotating refresh tokens. Only the SHA-256 hash is stored.
+model RefreshToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId String    @map("session_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  session AuthSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("refresh_tokens")
+}
+
+/// Single-use, expiring tokens for e-mail verification and password reset (hash only).
+model AuthToken {
+  id        String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String        @map("user_id") @db.Uuid
+  type      AuthTokenType
+  tokenHash String        @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime      @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime?     @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, createdAt])
+  @@map("auth_tokens")
+}
+
+model MfaRecoveryCode {
+  id       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId   String    @map("user_id") @db.Uuid
+  codeHash String    @map("code_hash") @db.VarChar(64)
+  usedAt   DateTime? @map("used_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, codeHash])
+  @@map("mfa_recovery_codes")
+}
+
+/// Append-only. UPDATE/DELETE/TRUNCATE are blocked by a trigger and revoked from the app role.
+model AuditLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  actorRole   String?  @map("actor_role") @db.VarChar(30)
+  action      String   @db.VarChar(80)
+  targetType  String?  @map("target_type") @db.VarChar(40)
+  targetId    String?  @map("target_id") @db.VarChar(64)
+  salonId     String?  @map("salon_id") @db.Uuid
+  ipAddress   String?  @map("ip_address") @db.VarChar(45)
+  userAgent   String?  @map("user_agent") @db.VarChar(300)
+  requestId   String?  @map("request_id") @db.VarChar(64)
+  metadata    Json?
+
+  @@index([createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([targetType, targetId])
+  @@map("audit_logs")
+}

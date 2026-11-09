@@ -1,18 +1,23 @@
-import { LayoutDashboard, Menu, Palette, X } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, Palette, ShieldCheck, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { useAuth } from '../features/auth/AuthContext';
 
 /** Only real, working routes are listed. New sections are added to this list as their phase ships. */
 const nav = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/design-system', label: 'Design system', icon: Palette, end: false },
+  { to: '/', label: 'Overview', icon: LayoutDashboard, end: true, roles: null as string[] | null },
+  { to: '/users', label: 'Users', icon: Users, end: false, roles: ['SUPER_ADMIN', 'SUPPORT'] },
+  { to: '/security', label: 'Security', icon: ShieldCheck, end: false, roles: null },
+  { to: '/design-system', label: 'Design system', icon: Palette, end: false, roles: null },
 ];
 
 export function AppShell() {
   const [open, setOpen] = useState(false);
+  const { user, mfaEnrollmentRequired, logout } = useAuth();
+  const items = nav.filter((n) => (n.roles === null || (user && n.roles.includes(user.role))) && (!mfaEnrollmentRequired || n.to === '/security'));
   const links = (
     <nav aria-label="Main" className="flex flex-col gap-1 p-3">
-      {nav.map(({ to, label, icon: Icon, end }) => (
+      {items.map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
           to={to}
@@ -28,6 +33,17 @@ export function AppShell() {
           {label}
         </NavLink>
       ))}
+      <div className="mt-4 border-t border-line pt-4">
+        <p className="truncate px-3 text-xs text-muted" title={user?.email}>{user?.fullName} · {user?.role.replace('_', ' ').toLowerCase()}</p>
+        <button
+          type="button"
+          onClick={() => void logout()}
+          className="mt-1 flex min-h-11 w-full items-center gap-3 rounded-input px-3 text-sm font-medium hover:bg-sand"
+        >
+          <LogOut className="size-4" aria-hidden />
+          Sign out
+        </button>
+      </div>
     </nav>
   );
 

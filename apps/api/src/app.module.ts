@@ -7,6 +7,10 @@ import { TenancyModule } from './common/tenancy/tenancy.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
 import { AppConfigModule } from './config/config.module';
 import { ENV, Env, parseEnv } from './config/env';
+import { AdminUsersModule } from './modules/admin-users/admin-users.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { AuthorizationGuard, JwtAuthGuard } from './modules/auth/guards';
 import { HealthModule } from './modules/health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -43,11 +47,17 @@ const env = parseEnv();
     ThrottlerModule.forRoot([{ ttl: env.RATE_LIMIT_TTL_MS, limit: env.RATE_LIMIT_MAX }]),
     PrismaModule,
     TenancyModule,
+    AuditModule,
+    AuthModule,
+    AdminUsersModule,
     HealthModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    // Order matters: rate limit first, then authentication (default deny), then roles/permissions.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: AuthorizationGuard },
   ],
 })
 export class AppModule {}

@@ -3,10 +3,13 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = 'postgresql://x:x@localhost:5432/x';
 process.env.CORS_ORIGINS = 'https://admin.example.test';
 process.env.LOG_LEVEL = 'silent';
+process.env.JWT_ACCESS_SECRET = 'test-secret-'.padEnd(48, 'x');
+process.env.MFA_ENCRYPTION_KEY = Buffer.alloc(32, 9).toString('base64');
 process.env.RATE_LIMIT_MAX = '5';
 process.env.RATE_LIMIT_TTL_MS = '60000';
 
 import { Controller, Get, INestApplication, Post, Body } from '@nestjs/common';
+import { Public } from '../src/common/auth/decorators';
 import { Test } from '@nestjs/testing';
 import { IsString } from 'class-validator';
 import request from 'supertest';
@@ -19,6 +22,7 @@ class EchoDto {
   @IsString() name!: string;
 }
 
+@Public()
 @Controller('probe')
 class ProbeController {
   @Get('boom') boom() {
@@ -30,6 +34,11 @@ class ProbeController {
 }
 
 describe('API foundation (security + conventions)', () => {
+  it('protects every non-@Public route by default (401 without a token)', async () => {
+    const res = await request(app.getHttpServer()).get('/api/v1/auth/me').expect(401);
+    expect(res.body.error.code).toBe('UNAUTHENTICATED');
+  });
+
   let app: INestApplication;
 
   beforeAll(async () => {

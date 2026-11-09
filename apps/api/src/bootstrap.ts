@@ -1,5 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { Env } from './config/env';
 
@@ -8,6 +9,11 @@ import { Env } from './config/env';
  */
 export function configureApp(app: INestApplication, env: Env): void {
   app.setGlobalPrefix('api/v1');
+
+  // Behind a load balancer req.ip is the proxy unless told how many hops to trust; rate limits,
+  // lockout audit data and session IPs all depend on it.
+  app.getHttpAdapter().getInstance().set('trust proxy', env.TRUST_PROXY_HOPS);
+  app.use(cookieParser());
 
   app.use(
     helmet({

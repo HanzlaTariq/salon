@@ -3,6 +3,12 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AppShell } from './app/AppShell';
+import { AuthProvider } from './features/auth/AuthContext';
+import { LoginPage } from './features/auth/LoginPage';
+import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from './features/auth/RecoveryPages';
+import { RequireAuth } from './features/auth/RequireAuth';
+import { SecurityPage } from './features/security/SecurityPage';
+import { UsersPage } from './features/users/UsersPage';
 import { OverviewPage } from './features/dashboard/OverviewPage';
 import { DesignSystemPage } from './features/design-system/DesignSystemPage';
 import './index.css';
@@ -22,13 +28,25 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route index element={<OverviewPage />} />
-            <Route path="design-system" element={<DesignSystemPage />} />
-            <Route path="*" element={<div className="py-20 text-center text-muted">Page not found.</div>} />
-          </Route>
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            {/* Public pages (also used by customers / owners following e-mailed links) */}
+            <Route path="login" element={<LoginPage />} />
+            <Route path="forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="reset-password" element={<ResetPasswordPage />} />
+            <Route path="verify-email" element={<VerifyEmailPage />} />
+            {/* Everything else requires a signed-in platform administrator */}
+            <Route element={<RequireAuth />}>
+              <Route element={<AppShell />}>
+                <Route index element={<OverviewPage />} />
+                <Route path="users" element={<UsersPage />} />
+                <Route path="security" element={<SecurityPage />} />
+                <Route path="design-system" element={<DesignSystemPage />} />
+                <Route path="*" element={<div className="py-20 text-center text-muted">Page not found.</div>} />
+              </Route>
+            </Route>
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,
