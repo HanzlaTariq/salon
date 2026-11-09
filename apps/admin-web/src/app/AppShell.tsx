@@ -1,11 +1,14 @@
-import { LayoutDashboard, LogOut, Menu, Palette, ShieldCheck, Users, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { LayoutDashboard, LogOut, Menu, Palette, Scissors, ShieldCheck, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import { apiFetch } from '../lib/api';
 
 /** Only real, working routes are listed. New sections are added to this list as their phase ships. */
 const nav = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true, roles: null as string[] | null },
+  { to: '/salons', label: 'Salons', icon: Scissors, end: false, roles: ['SUPER_ADMIN', 'SUPPORT'] },
   { to: '/users', label: 'Users', icon: Users, end: false, roles: ['SUPER_ADMIN', 'SUPPORT'] },
   { to: '/security', label: 'Security', icon: ShieldCheck, end: false, roles: null },
   { to: '/design-system', label: 'Design system', icon: Palette, end: false, roles: null },
@@ -14,6 +17,14 @@ const nav = [
 export function AppShell() {
   const [open, setOpen] = useState(false);
   const { user, mfaEnrollmentRequired, logout } = useAuth();
+  const canSeeSalons = !!user && ['SUPER_ADMIN', 'SUPPORT'].includes(user.role) && !mfaEnrollmentRequired;
+  // In-app notification: number of applications waiting for review (refreshes every minute).
+  const pending = useQuery({
+    queryKey: ['salon-stats'],
+    enabled: canSeeSalons,
+    refetchInterval: 60_000,
+    queryFn: () => apiFetch<{ pending: number }>('/admin/salons/stats'),
+  });
   const items = nav.filter((n) => (n.roles === null || (user && n.roles.includes(user.role))) && (!mfaEnrollmentRequired || n.to === '/security'));
   const links = (
     <nav aria-label="Main" className="flex flex-col gap-1 p-3">
@@ -31,6 +42,11 @@ export function AppShell() {
         >
           <Icon className="size-4" aria-hidden />
           {label}
+          {to === '/salons' && (pending.data?.pending ?? 0) > 0 && (
+            <span aria-label={`${pending.data?.pending} pending applications`} className="ml-auto rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-ink">
+              {pending.data?.pending}
+            </span>
+          )}
         </NavLink>
       ))}
       <div className="mt-4 border-t border-line pt-4">

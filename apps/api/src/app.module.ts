@@ -12,6 +12,8 @@ import { AdminUsersModule } from './modules/admin-users/admin-users.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthorizationGuard, JwtAuthGuard } from './modules/auth/guards';
+import { SalonsModule } from './modules/salons/salons.module';
+import { StorageModule } from './common/storage/storage.module';
 import { HealthModule } from './modules/health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -49,8 +51,10 @@ const env = parseEnv();
     PrismaModule,
     TenancyModule,
     AuditModule,
+    StorageModule,
     AuthModule,
     AdminUsersModule,
+    SalonsModule,
     HealthModule,
   ],
   providers: [

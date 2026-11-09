@@ -54,6 +54,8 @@ model User {
   sessions      AuthSession[]
   authTokens    AuthToken[]
   recoveryCodes MfaRecoveryCode[]
+  /// Phase 3: the salon this account owns (SALON_OWNER accounts only; at most one).
+  ownedSalon    Salon?
 
   @@index([role, status])
   @@map("users")

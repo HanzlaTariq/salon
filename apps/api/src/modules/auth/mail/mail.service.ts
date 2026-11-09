@@ -59,4 +59,46 @@ export class MailService {
       `Hello ${name},\n\nYour password was just changed and all other devices were signed out. If this was not you, reset your password immediately and contact support.`,
     );
   }
+
+  // ---- Phase 3: salon application lifecycle ----
+
+  sendSalonSubmittedToAdmin(to: string, adminName: string, salonName: string, city: string) {
+    return this.safeSend(
+      to,
+      'New salon application to review',
+      `Hello ${adminName},\n\nA new salon application is waiting for review:\n  ${salonName} (${city})\n\nOpen the admin dashboard > Salons > Pending to review it.`,
+    );
+  }
+
+  sendSalonApproved(to: string, name: string, salonName: string) {
+    return this.safeSend(
+      to,
+      'Your salon has been approved',
+      `Hello ${name},\n\nGood news: "${salonName}" has been approved and is now visible to customers.`,
+    );
+  }
+
+  sendSalonRejected(to: string, name: string, salonName: string, reason: string) {
+    return this.safeSend(
+      to,
+      'Your salon application needs changes',
+      `Hello ${name},\n\nWe could not approve "${salonName}" yet.\n\nReason: ${reason}\n\nOpen the app, correct the details and submit again.`,
+    );
+  }
+
+  sendSalonSuspended(to: string, name: string, salonName: string, reason: string) {
+    return this.safeSend(
+      to,
+      'Your salon has been suspended',
+      `Hello ${name},\n\n"${salonName}" is no longer visible to customers.\n\nReason: ${reason}\n\nPlease contact support if you believe this is a mistake.`,
+    );
+  }
+
+  sendSalonReactivated(to: string, name: string, salonName: string) {
+    return this.safeSend(
+      to,
+      'Your salon is active again',
+      `Hello ${name},\n\n"${salonName}" has been reactivated and is visible to customers again.`,
+    );
+  }
 }

@@ -64,6 +64,23 @@ const schema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_SECURE: bool('false'),
+
+  // ---- Phase 3: private object storage for salon documents and photos ----
+  /** `memory` is for tests/local development only (refused in production). */
+  STORAGE_DRIVER: z.enum(['memory', 'supabase']).default('memory'),
+  /** https://<project-ref>.supabase.co  (backend only). */
+  SUPABASE_URL: z.string().url().optional(),
+  /** BACKEND ONLY. Never in Flutter, admin-web, git or logs. Bypasses all Supabase policies. */
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
+  /** Must be a PRIVATE bucket (public = off). */
+  SUPABASE_STORAGE_BUCKET: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/, 'SUPABASE_STORAGE_BUCKET must be a valid bucket name')
+    .default('salon-private'),
+  /** Per-file upload cap in bytes (hard ceiling 10 MiB; also enforced by a DB CHECK). */
+  UPLOAD_MAX_BYTES: z.coerce.number().int().min(100_000).max(10_485_760).default(5_242_880),
+  /** Lifetime of signed download URLs. Keep short. */
+  SIGNED_URL_TTL_SEC: z.coerce.number().int().min(30).max(3600).default(300),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -87,6 +104,14 @@ export function parseEnv(raw: NodeJS.ProcessEnv = process.env): Env {
     if (env.MAIL_TRANSPORT !== 'smtp') problems.push('MAIL_TRANSPORT: must be smtp in production');
     if (!env.REQUIRE_ADMIN_MFA) problems.push('REQUIRE_ADMIN_MFA: must be true in production');
     if (!env.REDIS_URL) problems.push('REDIS_URL: required in production (shared rate limits, risk R5)');
+  }
+  if (env.STORAGE_DRIVER === 'supabase') {
+    if (!env.SUPABASE_URL) problems.push('SUPABASE_URL: required when STORAGE_DRIVER=supabase');
+    if (!env.SUPABASE_SERVICE_ROLE_KEY) problems.push('SUPABASE_SERVICE_ROLE_KEY: required when STORAGE_DRIVER=supabase');
+  }
+  if (env.NODE_ENV === 'production') {
+    if (env.STORAGE_DRIVER !== 'supabase') problems.push('STORAGE_DRIVER: must be supabase in production');
+    if (env.SUPABASE_URL && !env.SUPABASE_URL.startsWith('https://')) problems.push('SUPABASE_URL: must use https:// in production');
   }
   if (env.MAIL_TRANSPORT === 'smtp' && !env.SMTP_HOST) problems.push('SMTP_HOST: required when MAIL_TRANSPORT=smtp');
   if (problems.length > 0) throw new Error(`Invalid environment configuration:\n  - ${problems.join('\n  - ')}`);

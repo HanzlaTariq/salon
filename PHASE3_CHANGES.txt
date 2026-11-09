@@ -1,0 +1,52 @@
+PHASE 3: Salon registration and Super Admin approval
+Extract this zip OVER your project folder (same paths). Only NEW and UPDATED files are included.
+
+NEW
+  apps/api/prisma/schema/salon.prisma
+  apps/api/prisma/schema/migrations/20261110000000_salons_phase3/migration.sql
+  apps/api/src/common/db/pg-errors.ts
+  apps/api/src/common/storage/object-storage.ts          (Supabase Storage REST + in-memory driver)
+  apps/api/src/common/storage/storage.module.ts
+  apps/api/src/common/uploads/sniff.ts
+  apps/api/src/common/uploads/process-upload.ts
+  apps/api/src/common/uploads/process-upload.spec.ts
+  apps/api/src/modules/salons/dto/salon.dto.ts
+  apps/api/src/modules/salons/salon.types.ts
+  apps/api/src/modules/salons/salon.types.spec.ts
+  apps/api/src/modules/salons/salon-views.ts
+  apps/api/src/modules/salons/salons.repository.ts
+  apps/api/src/modules/salons/owner-salons.service.ts
+  apps/api/src/modules/salons/admin-salons.service.ts
+  apps/api/src/modules/salons/public-salons.service.ts
+  apps/api/src/modules/salons/salons.controllers.ts
+  apps/api/src/modules/salons/salons.module.ts
+  apps/api/test/salons.e2e-spec.ts
+  apps/admin-web/src/features/salons/types.ts
+  apps/admin-web/src/features/salons/SalonsPage.tsx
+  apps/admin-web/src/features/salons/SalonDetailPage.tsx
+  apps/admin-web/src/features/salons/FileViewer.tsx
+  apps/business_app/lib/salon/salon_models.dart
+  apps/business_app/lib/salon/salon_api.dart
+  apps/business_app/lib/salon/salon_form.dart
+  apps/business_app/lib/salon/salon_home.dart
+  apps/business_app/test/salon_models_test.dart
+  docs/PHASE3.md
+  PHASE3_CHANGES.txt
+
+UPDATED
+  apps/api/package.json, package-lock.json     (multer override ^2.5.0 = R1 closed; sharp ^0.35.5; @types/multer)
+  apps/api/.env.example                        (storage variables)
+  apps/api/prisma/schema/auth.prisma           (User.ownedSalon relation)
+  apps/api/src/app.module.ts                   (StorageModule, SalonsModule)
+  apps/api/src/common/auth/permissions.ts      (salons.* permissions)
+  apps/api/src/common/errors/app-exception.ts  (UNSUPPORTED_MEDIA_TYPE)
+  apps/api/src/common/tenancy/tenant-db.service.ts + .spec.ts   (withPublicRead)
+  apps/api/src/config/env.ts + env.spec.ts     (storage env + production rules)
+  apps/api/src/modules/auth/auth.module.ts     (exports MailService)
+  apps/api/src/modules/auth/mail/mail.service.ts (salon notification mails)
+  apps/api/test/auth.e2e-spec.ts               (public-route allow-list gets the 2 public salon routes)
+  apps/admin-web/src/main.tsx, app/AppShell.tsx, features/dashboard/OverviewPage.tsx
+  apps/business_app/lib/main.dart, pubspec.yaml
+  docs/SUPABASE.md, docs/security/risk-register.md
+
+COMMANDS: see docs/PHASE3.md (npm install, prisma generate, prisma migrate deploy, tests).

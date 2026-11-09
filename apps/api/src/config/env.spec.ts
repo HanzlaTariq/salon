@@ -15,6 +15,9 @@ const prod = {
   MAIL_TRANSPORT: 'smtp',
   SMTP_HOST: 'smtp.example.com',
   REDIS_URL: 'rediss://default:x@redis.example.com:6380',
+  STORAGE_DRIVER: 'supabase',
+  SUPABASE_URL: 'https://abcdefgh.supabase.co',
+  SUPABASE_SERVICE_ROLE_KEY: 'k'.repeat(40),
 };
 
 describe('parseEnv', () => {
@@ -84,5 +87,30 @@ describe('parseEnv', () => {
 
   it('requires SMTP_HOST when using the smtp transport', () => {
     expect(() => parseEnv({ ...base, MAIL_TRANSPORT: 'smtp' } as NodeJS.ProcessEnv)).toThrow(/SMTP_HOST/);
+  });
+
+  it('Phase 3: storage defaults are safe and the service key is required for the supabase driver', () => {
+    const env = parseEnv({ ...base } as NodeJS.ProcessEnv);
+    expect(env.STORAGE_DRIVER).toBe('memory');
+    expect(env.UPLOAD_MAX_BYTES).toBe(5_242_880);
+    expect(env.SIGNED_URL_TTL_SEC).toBe(300);
+    expect(() => parseEnv({ ...base, STORAGE_DRIVER: 'supabase' } as NodeJS.ProcessEnv)).toThrow(/SUPABASE_URL/);
+    expect(() =>
+      parseEnv({ ...base, STORAGE_DRIVER: 'supabase', SUPABASE_URL: 'https://a.supabase.co' } as NodeJS.ProcessEnv),
+    ).toThrow(/SUPABASE_SERVICE_ROLE_KEY/);
+  });
+
+  it('Phase 3: production refuses the in-memory storage driver and an http Supabase URL', () => {
+    expect(() => parseEnv({ ...prod, STORAGE_DRIVER: 'memory' } as NodeJS.ProcessEnv)).toThrow(/STORAGE_DRIVER/);
+    expect(() => parseEnv({ ...prod, SUPABASE_URL: 'http://abcdefgh.supabase.co' } as NodeJS.ProcessEnv)).toThrow(/https/);
+  });
+
+  it('Phase 3: upload limit cannot exceed the 10 MiB ceiling and never leaks the service key', () => {
+    expect(() => parseEnv({ ...base, UPLOAD_MAX_BYTES: '99999999' } as NodeJS.ProcessEnv)).toThrow(/UPLOAD_MAX_BYTES/);
+    try {
+      parseEnv({ ...base, SUPABASE_SERVICE_ROLE_KEY: 'short' } as NodeJS.ProcessEnv);
+    } catch (e) {
+      expect(String(e)).not.toContain('short');
+    }
   });
 });

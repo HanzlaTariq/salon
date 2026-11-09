@@ -30,6 +30,6 @@ import { TokenService } from './token.service';
       useFactory: (env: Env) => (env.MAIL_TRANSPORT === 'smtp' ? new SmtpMailer(env) : new ConsoleMailer()),
     },
   ],
-  exports: [Clock, AuthRepository, AuthService, TokenService, PasswordService, Mailer, JwtAuthGuard, AuthorizationGuard],
+  exports: [Clock, AuthRepository, AuthService, TokenService, PasswordService, MailService, Mailer, JwtAuthGuard, AuthorizationGuard],
 })
 export class AuthModule {}

@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_core/flutter_core.dart';
 
+import 'salon/salon_api.dart';
+import 'salon/salon_home.dart';
+
 void main() {
-  runApp(BusinessApp(repository: AuthRepository(api: AuthApi())));
+  final repository = AuthRepository(api: AuthApi());
+  runApp(BusinessApp(repository: repository, salonApi: SalonApi(repository: repository)));
 }
 
 class BusinessApp extends StatelessWidget {
-  const BusinessApp({super.key, required this.repository});
+  const BusinessApp({super.key, required this.repository, required this.salonApi});
 
   final AuthRepository repository;
+  final SalonApi salonApi;
 
   @override
   Widget build(BuildContext context) {
@@ -20,13 +25,18 @@ class BusinessApp extends StatelessWidget {
       home: AuthGate(
         repository: repository,
         accountType: 'SALON_OWNER',
-        signedInBuilder: (_) => SignedInHome(
-          repository: repository,
-          title: 'Salon Business',
-          subtitle: 'Owner dashboard Phase 3-5 mein banega. Staff accounts invite ke zariye bante hain.',
-          // Staff accounts are created by an owner (Phase 5). They sign in through this same app.
-          allowedRoles: const {'SALON_OWNER', 'SALON_STAFF'},
-        ),
+        signedInBuilder: (_) {
+          final role = repository.session?.user.role;
+          // Owners register and manage the salon. Staff accounts (invited by an owner, Phase 5) keep the
+          // basic home until their dashboard exists.
+          if (role == 'SALON_OWNER') return SalonHome(repository: repository, api: salonApi);
+          return SignedInHome(
+            repository: repository,
+            title: 'Salon Business',
+            subtitle: 'Your staff dashboard arrives in a later release.',
+            allowedRoles: const {'SALON_OWNER', 'SALON_STAFF'},
+          );
+        },
       ),
     );
   }

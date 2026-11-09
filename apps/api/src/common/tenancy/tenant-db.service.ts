@@ -31,4 +31,21 @@ export class TenantDb {
       return fn(tx);
     });
   }
+
+  /**
+   * Read-only access for UNAUTHENTICATED public endpoints (approved-salon listings).
+   * No user and no salon are set, so only RLS policies that explicitly check `app_public_read()`
+   * can match (approved salons and their photos). Every other table stays invisible (fail closed).
+   * Never use this for writes.
+   */
+  async withPublicRead<T>(fn: (tx: any) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(async (tx: any) => {
+      const t = tx as TenantTx;
+      await t.$queryRaw`SELECT set_config('app.user_id', '', true)`;
+      await t.$queryRaw`SELECT set_config('app.salon_id', '', true)`;
+      await t.$queryRaw`SELECT set_config('app.is_platform_admin', 'false', true)`;
+      await t.$queryRaw`SELECT set_config('app.public_read', 'true', true)`;
+      return fn(tx);
+    });
+  }
 }

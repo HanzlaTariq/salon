@@ -1,0 +1,110 @@
+// Phase 3: salon registration, application review, uploaded files.
+// Hand-written SQL in migrations/20261110000000_salons_phase3 is the source of truth for CHECK
+// constraints, partial indexes, RLS policies and guard triggers (Prisma cannot express them).
+// Apply migrations with `prisma migrate deploy` (never `migrate dev` against Supabase).
+
+enum SalonStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+
+  @@map("salon_status")
+}
+
+enum SalonType {
+  MEN
+  LADIES
+  UNISEX
+
+  @@map("salon_type")
+}
+
+enum SalonApplicationStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+
+  @@map("salon_application_status")
+}
+
+enum SalonFileKind {
+  DOCUMENT
+  PHOTO
+
+  @@map("salon_file_kind")
+}
+
+/// Tenant root. RLS: owner (owner_user_id), the salon context (id) or a platform admin.
+model Salon {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerUserId     String      @unique @map("owner_user_id") @db.Uuid
+  name            String      @db.VarChar(120)
+  salonType       SalonType   @map("salon_type")
+  city            String      @db.VarChar(80)
+  area            String      @db.VarChar(80)
+  addressLine     String      @map("address_line") @db.VarChar(250)
+  phone           String      @db.VarChar(20)
+  contactEmail    String?     @map("contact_email") @db.VarChar(254)
+  description     String?     @db.VarChar(1000)
+  latitude        Decimal?    @db.Decimal(9, 6)
+  longitude       Decimal?    @db.Decimal(9, 6)
+  status          SalonStatus @default(DRAFT)
+  submittedAt     DateTime?   @map("submitted_at") @db.Timestamptz(6)
+  approvedAt      DateTime?   @map("approved_at") @db.Timestamptz(6)
+  approvedBy      String?     @map("approved_by") @db.Uuid
+  rejectionReason String?     @map("rejection_reason") @db.VarChar(500)
+  suspendedReason String?     @map("suspended_reason") @db.VarChar(500)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner        User               @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  applications SalonApplication[]
+  files        SalonFile[]
+
+  @@index([status, createdAt])
+  @@index([city, status])
+  @@map("salons")
+}
+
+/// One row per submission. `snapshot` freezes the profile + file ids that the reviewer saw.
+model SalonApplication {
+  id             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId        String                 @map("salon_id") @db.Uuid
+  submissionNo   Int                    @map("submission_no")
+  status         SalonApplicationStatus @default(SUBMITTED)
+  submittedAt    DateTime               @map("submitted_at") @db.Timestamptz(6)
+  snapshot       Json
+  reviewedBy     String?                @map("reviewed_by") @db.Uuid
+  reviewedAt     DateTime?              @map("reviewed_at") @db.Timestamptz(6)
+  decisionReason String?                @map("decision_reason") @db.VarChar(500)
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@unique([salonId, submissionNo])
+  @@index([status, submittedAt])
+  @@map("salon_applications")
+}
+
+/// Metadata for an object in the PRIVATE storage bucket. Documents are never public.
+model SalonFile {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId      String        @map("salon_id") @db.Uuid
+  kind         SalonFileKind
+  docType      String        @map("doc_type") @db.VarChar(30)
+  storageKey   String        @unique @map("storage_key") @db.VarChar(300)
+  contentType  String        @map("content_type") @db.VarChar(60)
+  sizeBytes    Int           @map("size_bytes")
+  sha256       String        @db.Char(64)
+  originalName String?       @map("original_name") @db.VarChar(120)
+  uploadedBy   String        @map("uploaded_by") @db.Uuid
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt    DateTime?     @map("deleted_at") @db.Timestamptz(6)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@index([salonId, kind])
+  @@map("salon_files")
+}

@@ -466,6 +466,8 @@ d('Phase 2: authentication & authorization (real PostgreSQL)', () => {
       expect(found.sort()).toEqual([
         'auth/forgot-password', 'auth/login', 'auth/logout', 'auth/refresh', 'auth/register',
         'auth/resend-verification', 'auth/reset-password', 'auth/verify-email', 'health/', 'health/ready',
+        // Phase 3: approved-salon read endpoints (RLS only exposes APPROVED salons to public-read transactions)
+        'public/salons/', 'public/salons/:id',
       ].sort());
     });
 

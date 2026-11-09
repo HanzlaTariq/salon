@@ -1,11 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, apiFetch } from '../../lib/api';
+import { Link } from 'react-router-dom';
 import { Card, ErrorState, Skeleton, StatCard } from '../../design-system';
+import { useAuth } from '../auth/AuthContext';
 
 /** Phase 1: real connectivity check against the API. Business analytics arrive in Phase 13. */
 export function OverviewPage() {
   const live = useQuery({ queryKey: ['health', 'live'], queryFn: () => apiFetch<{ status: string }>('/health') });
   const ready = useQuery({ queryKey: ['health', 'ready'], queryFn: () => apiFetch<{ status: string }>('/health/ready') });
+
+  const { user } = useAuth();
+  const canSeeSalons = !!user && ['SUPER_ADMIN', 'SUPPORT'].includes(user.role);
+  const salons = useQuery({
+    queryKey: ['salon-stats'],
+    enabled: canSeeSalons,
+    queryFn: () => apiFetch<{ pending: number; approved: number; suspended: number }>('/admin/salons/stats'),
+  });
 
   const err = (live.error ?? ready.error) as ApiError | null;
   const retry = () => {
@@ -35,6 +45,14 @@ export function OverviewPage() {
           </>
         )}
       </div>
+
+      {canSeeSalons && salons.data && (
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <Link to="/salons" className="block"><StatCard label="Applications to review" value={salons.data.pending} hint="Open the review queue" /></Link>
+          <StatCard label="Approved salons" value={salons.data.approved} />
+          <StatCard label="Suspended salons" value={salons.data.suspended} />
+        </div>
+      )}
     </div>
   );
 }

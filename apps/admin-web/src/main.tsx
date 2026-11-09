@@ -8,6 +8,8 @@ import { LoginPage } from './features/auth/LoginPage';
 import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from './features/auth/RecoveryPages';
 import { RequireAuth } from './features/auth/RequireAuth';
 import { SecurityPage } from './features/security/SecurityPage';
+import { SalonDetailPage } from './features/salons/SalonDetailPage';
+import { SalonsPage } from './features/salons/SalonsPage';
 import { UsersPage } from './features/users/UsersPage';
 import { OverviewPage } from './features/dashboard/OverviewPage';
 import { DesignSystemPage } from './features/design-system/DesignSystemPage';
@@ -39,6 +41,8 @@ createRoot(document.getElementById('root')!).render(
             <Route element={<RequireAuth />}>
               <Route element={<AppShell />}>
                 <Route index element={<OverviewPage />} />
+                <Route path="salons" element={<SalonsPage />} />
+                <Route path="salons/:id" element={<SalonDetailPage />} />
                 <Route path="users" element={<UsersPage />} />
                 <Route path="security" element={<SecurityPage />} />
                 <Route path="design-system" element={<DesignSystemPage />} />

@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   flutter_core:
     path: ../../packages/flutter_core
+  http: ^1.2.2
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

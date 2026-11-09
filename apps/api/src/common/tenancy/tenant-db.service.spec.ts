@@ -49,3 +49,18 @@ describe('TenantDb.withTenant', () => {
     expect(calls).toHaveLength(0);
   });
 });
+
+describe('TenantDb.withPublicRead', () => {
+  it('clears identity, never grants admin, and opts in to public reads for this transaction only', async () => {
+    const { calls, prisma } = fakePrisma();
+    await new TenantDb(prisma as never).withPublicRead(async () => 1);
+    expect(calls).toHaveLength(4);
+    expect(calls.every((c) => c.sql.includes('set_config(') && c.sql.includes(', true)'))).toBe(true);
+    const sql = calls.map((c) => c.sql).join('\n');
+    expect(sql).toContain("'app.is_platform_admin', 'false'");
+    expect(sql).toContain("'app.public_read', 'true'");
+    expect(sql).toContain("'app.user_id', ''");
+    expect(sql).toContain("'app.salon_id', ''");
+  });
+});
+
