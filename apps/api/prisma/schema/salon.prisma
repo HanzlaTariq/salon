@@ -62,6 +62,12 @@ model Salon {
   owner        User               @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
   applications SalonApplication[]
   files        SalonFile[]
+  // Phase 4 (catalog.prisma)
+  openingHours  SalonOpeningHour[]
+  staffProfiles StaffProfile[]
+  categories    ServiceCategory[]
+  services      Service[]
+  staffServices StaffService[]
 
   @@index([status, createdAt])
   @@index([city, status])
@@ -89,6 +95,7 @@ model SalonApplication {
 }
 
 /// Metadata for an object in the PRIVATE storage bucket. Documents are never public.
+/// docType: documents CNIC_FRONT/CNIC_BACK/BUSINESS_LICENSE/OTHER_DOCUMENT; photos COVER/GALLERY/CATALOG (Phase 4: category/service pictures).
 model SalonFile {
   id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   salonId      String        @map("salon_id") @db.Uuid

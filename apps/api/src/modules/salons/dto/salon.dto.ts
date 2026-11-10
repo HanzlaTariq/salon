@@ -1,7 +1,8 @@
 import { PartialType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
-  IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Length, Matches, Max, MaxLength, Min,
+  ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Length, Matches, Max, MaxLength, Min,
+  ValidateNested,
 } from 'class-validator';
 import { normalizePhone } from '../../../common/util/phone';
 import { DOCUMENT_TYPES, FILE_KINDS, FileKind, FileDocType, PHOTO_TYPES, SALON_STATUSES, SALON_TYPES, SalonStatus, SalonType } from '../salon.types';
@@ -34,6 +35,18 @@ export class UpdateSalonDto extends PartialType(CreateSalonDto) {}
 export class UploadFileDto {
   @IsIn(FILE_KINDS) kind!: FileKind;
   @IsIn([...DOCUMENT_TYPES, ...PHOTO_TYPES]) docType!: FileDocType;
+}
+
+/** One weekday of the opening-hours schedule. Times are HH:MM (24 h); `closed: true` days carry no times. */
+export class DayHoursDto {
+  @IsInt() @Min(1) @Max(7) weekday!: number;
+  @IsBoolean() closed!: boolean;
+  @IsOptional() @IsString() @Matches(/^(?:(?:[01]\d|2[0-3]):[0-5]\d|24:00)$/, { message: 'opensAt must be HH:MM' }) opensAt?: string | null;
+  @IsOptional() @IsString() @Matches(/^(?:(?:[01]\d|2[0-3]):[0-5]\d|24:00)$/, { message: 'closesAt must be HH:MM' }) closesAt?: string | null;
+}
+
+export class SetOpeningHoursDto {
+  @IsArray() @ArrayMinSize(7) @ArrayMaxSize(7) @ValidateNested({ each: true }) @Type(() => DayHoursDto) days!: DayHoursDto[];
 }
 
 export class ReasonDto {

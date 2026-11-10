@@ -22,5 +22,6 @@ import { SalonsRepository } from './salons.repository';
   ],
   controllers: [OwnerSalonsController, AdminSalonsController, PublicSalonsController],
   providers: [SalonsRepository, OwnerSalonsService, AdminSalonsService, PublicSalonsService],
+  exports: [SalonsRepository],
 })
 export class SalonsModule {}

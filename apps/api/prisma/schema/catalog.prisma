@@ -1,0 +1,103 @@
+// Phase 4: opening hours, staff roster (minimal), dynamic categories and services, staff-service assignments.
+// Hand-written SQL in migrations/20261111000000_catalog_phase4 is the source of truth for CHECK constraints,
+// partial unique indexes, composite foreign keys (a catalogue row can only reference rows of the SAME salon),
+// RLS policies and guard triggers (Prisma cannot express them). Composite foreign keys are intentionally not
+// modelled here; all catalogue SQL is parameterized $queryRaw. Apply migrations with `prisma migrate deploy`.
+
+enum ServicePricingMode {
+  FIXED
+  STAFF_BASED
+
+  @@map("service_pricing_mode")
+}
+
+/// One row per weekday (ISO 1 = Monday ... 7 = Sunday). Minutes since midnight, same-day interval.
+model SalonOpeningHour {
+  salonId      String   @map("salon_id") @db.Uuid
+  weekday      Int      @db.SmallInt
+  isClosed     Boolean  @default(false) @map("is_closed")
+  opensMinute  Int?     @map("opens_minute") @db.SmallInt
+  closesMinute Int?     @map("closes_minute") @db.SmallInt
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@id([salonId, weekday])
+  @@map("salon_opening_hours")
+}
+
+/// Minimal roster entry. Phase 5 adds invitations, accounts, permissions and schedules to this table.
+model StaffProfile {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId     String    @map("salon_id") @db.Uuid
+  /// Set for the owner profile; NULL for staff without a login (until Phase 5 invitations).
+  userId      String?   @map("user_id") @db.Uuid
+  displayName String    @map("display_name") @db.VarChar(80)
+  isOwner     Boolean   @default(false) @map("is_owner")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@unique([salonId, id], map: "staff_profiles_salon_id_id_key")
+  @@map("staff_profiles")
+}
+
+model ServiceCategory {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId     String    @map("salon_id") @db.Uuid
+  name        String    @db.VarChar(60)
+  description String?   @db.VarChar(300)
+  imageFileId String?   @map("image_file_id") @db.Uuid
+  displayOrder Int      @default(0) @map("display_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@unique([salonId, id], map: "service_categories_salon_id_id_key")
+  @@map("service_categories")
+}
+
+model Service {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId         String             @map("salon_id") @db.Uuid
+  categoryId      String             @map("category_id") @db.Uuid
+  name            String             @db.VarChar(100)
+  description     String?            @db.VarChar(500)
+  durationMinutes Int                @map("duration_minutes")
+  pricingMode     ServicePricingMode @default(FIXED) @map("pricing_mode")
+  /// FIXED: the salon-wide price. STAFF_BASED: NULL (each assignment carries its own price).
+  basePrice       Decimal?           @map("base_price") @db.Decimal(10, 2)
+  imageFileId     String?            @map("image_file_id") @db.Uuid
+  isActive        Boolean            @default(true) @map("is_active")
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?          @map("deleted_at") @db.Timestamptz(6)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@unique([salonId, id], map: "services_salon_id_id_key")
+  @@unique([salonId, id, pricingMode], map: "services_salon_id_id_mode_key")
+  @@map("services")
+}
+
+model StaffService {
+  salonId     String             @map("salon_id") @db.Uuid
+  serviceId   String             @map("service_id") @db.Uuid
+  staffId     String             @map("staff_id") @db.Uuid
+  pricingMode ServicePricingMode @map("pricing_mode")
+  /// STAFF_BASED services only.
+  price       Decimal?           @db.Decimal(10, 2)
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@id([serviceId, staffId])
+  @@index([salonId, staffId], map: "staff_services_staff_idx")
+  @@map("staff_services")
+}

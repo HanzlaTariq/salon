@@ -3,6 +3,7 @@ import { AppException } from '../../common/errors/app-exception';
 import { ObjectStorage } from '../../common/storage/object-storage';
 import { TenantDb } from '../../common/tenancy/tenant-db.service';
 import { ENV, Env } from '../../config/env';
+import { weekFromRows } from './opening-hours';
 import { SalonRecord, SalonType } from './salon.types';
 import { SalonsRepository, Tx } from './salons.repository';
 
@@ -36,10 +37,10 @@ export class PublicSalonsService {
   }
 
   async detail(id: string) {
-    const { salon, photos } = await this.tenant.withPublicRead(async (tx: Tx) => {
+    const { salon, photos, hours } = await this.tenant.withPublicRead(async (tx: Tx) => {
       const s = await this.repo.findById(tx, id);
       if (!s || s.status !== 'APPROVED') throw new AppException('NOT_FOUND', 'Salon not found.', 404);
-      return { salon: s, photos: await this.repo.listPublicPhotos(tx, id) };
+      return { salon: s, photos: await this.repo.listPublicPhotos(tx, id), hours: await this.repo.listHours(tx, id) };
     });
     const signed = await Promise.all(
       photos.map(async (p) => {
@@ -51,6 +52,8 @@ export class PublicSalonsService {
         }
       }),
     );
-    return { ...publicView(salon), photos: signed.filter((x): x is NonNullable<typeof x> => x !== null), photoUrlTtlSec: this.env.SIGNED_URL_TTL_SEC };
+    // null (not "closed all week") while the owner has not entered any hours yet.
+    const openingHours = hours.length > 0 ? weekFromRows(hours) : null;
+    return { ...publicView(salon), openingHours, photos: signed.filter((x): x is NonNullable<typeof x> => x !== null), photoUrlTtlSec: this.env.SIGNED_URL_TTL_SEC };
   }
 }

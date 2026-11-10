@@ -12,6 +12,7 @@ import { AdminUsersModule } from './modules/admin-users/admin-users.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthorizationGuard, JwtAuthGuard } from './modules/auth/guards';
+import { CatalogModule } from './modules/catalog/catalog.module';
 import { SalonsModule } from './modules/salons/salons.module';
 import { StorageModule } from './common/storage/storage.module';
 import { HealthModule } from './modules/health/health.module';
@@ -55,6 +56,7 @@ const env = parseEnv();
     AuthModule,
     AdminUsersModule,
     SalonsModule,
+    CatalogModule,
     HealthModule,
   ],
   providers: [

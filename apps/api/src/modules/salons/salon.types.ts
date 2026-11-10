@@ -11,14 +11,23 @@ export const DOCUMENT_TYPES = ['CNIC_FRONT', 'CNIC_BACK', 'BUSINESS_LICENSE', 'O
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 export const PHOTO_TYPES = ['COVER', 'GALLERY'] as const;
 export type PhotoType = (typeof PHOTO_TYPES)[number];
-export type FileDocType = DocumentType | PhotoType;
+/** Phase 4: category/service pictures. Stored as PHOTO files but never counted as salon photos. */
+export const CATALOG_IMAGE_TYPE = 'CATALOG' as const;
+export type FileDocType = DocumentType | PhotoType | typeof CATALOG_IMAGE_TYPE;
 
 /** Technical caps for repeatable slots (single-slot types hold exactly one file; uploading again replaces it). */
 export const MULTI_SLOT_LIMITS: Partial<Record<FileDocType, number>> = { GALLERY: 12, OTHER_DOCUMENT: 5 };
 export const isMultiSlot = (t: FileDocType): boolean => t in MULTI_SLOT_LIMITS;
 
-/** Only these statuses allow the owner to change the profile or files. */
+/** Only these statuses allow the owner to change the application: DOCUMENTS and submission (review evidence). */
 export const OWNER_EDITABLE: readonly SalonStatus[] = ['DRAFT', 'REJECTED'];
+
+/**
+ * Phase 4: a live salon keeps working. The owner may edit the profile, opening hours, salon PHOTOS and the
+ * catalogue while DRAFT, REJECTED or APPROVED. PENDING (under review) and SUSPENDED stay locked.
+ * The same rule is enforced by the salons_guard / salon_files_guard triggers.
+ */
+export const PROFILE_EDITABLE: readonly SalonStatus[] = ['DRAFT', 'REJECTED', 'APPROVED'];
 
 export interface SalonRecord {
   id: string;
@@ -80,7 +89,7 @@ export interface MissingItems {
 /** What the owner still has to upload before the application can be submitted. */
 export function computeMissing(req: Requirements, files: Pick<SalonFileRecord, 'kind' | 'docType'>[]): MissingItems {
   const have = new Set(files.filter((f) => f.kind === 'DOCUMENT').map((f) => f.docType));
-  const photos = files.filter((f) => f.kind === 'PHOTO').length;
+  const photos = files.filter((f) => f.kind === 'PHOTO' && f.docType !== CATALOG_IMAGE_TYPE).length;
   return {
     documents: req.requiredDocuments.filter((d) => !have.has(d)),
     photos: Math.max(0, req.minPhotos - photos),

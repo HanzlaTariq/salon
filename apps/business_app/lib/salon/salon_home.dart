@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_core/flutter_core.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../catalog/catalog_api.dart';
+import '../catalog/catalog_screen.dart';
 import 'salon_api.dart';
 import 'salon_form.dart';
 import 'salon_models.dart';
 
 /// Owner home for Phase 3: register the salon, upload documents/photos, submit, and follow the review status.
 class SalonHome extends StatefulWidget {
-  const SalonHome({super.key, required this.repository, required this.api});
+  const SalonHome({super.key, required this.repository, required this.api, required this.catalogApi});
 
   final AuthRepository repository;
   final SalonApi api;
+  final CatalogApi catalogApi;
 
   @override
   State<SalonHome> createState() => _SalonHomeState();
@@ -191,20 +194,32 @@ class _SalonHomeState extends State<SalonHome> {
                   const SizedBox(height: AppSpacing.md),
                   Text(_actionError!, style: const TextStyle(color: AppColors.danger)),
                 ],
+                if (o.salon.status != 'DRAFT') ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CatalogScreen(api: widget.catalogApi))),
+                    icon: const Icon(Icons.content_cut),
+                    label: const Text('Services, staff and hours'),
+                  ),
+                ],
                 if (o.canEdit) ...[
                   const SizedBox(height: AppSpacing.xl),
                   Text('Documents', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: AppSpacing.xs),
                   Text('Photos of your documents are stored privately and seen only by our review team.', style: Theme.of(context).textTheme.bodySmall),
                   for (final d in o.requiredDocuments) _slot(label: documentLabels[d] ?? d, file: o.fileOf(d), onUpload: () => _upload('DOCUMENT', d)),
+                ],
+                if (o.canEditProfile) ...[
                   const SizedBox(height: AppSpacing.lg),
-                  Text('Salon photos (${o.photoCount}/${o.minPhotos} required)', style: Theme.of(context).textTheme.titleMedium),
+                  Text('Salon photos (${o.photoCount}${o.canEdit ? '/${o.minPhotos} required' : ''})', style: Theme.of(context).textTheme.titleMedium),
                   _slot(label: 'Cover photo', file: o.fileOf('COVER'), onUpload: () => _upload('PHOTO', 'COVER')),
                   for (final f in o.files.where((f) => f.docType == 'GALLERY'))
                     ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.image_outlined), title: const Text('Gallery photo'), trailing: IconButton(tooltip: 'Delete photo', icon: const Icon(Icons.delete_outline), onPressed: _busy ? null : () => _delete(f))),
                   Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: _busy ? null : () => _upload('PHOTO', 'GALLERY'), icon: const Icon(Icons.add_photo_alternate_outlined), label: const Text('Add gallery photo'))),
                   const SizedBox(height: AppSpacing.xl),
                   OutlinedButton(onPressed: _busy ? null : () => _openForm(existing: s), child: const Text('Edit salon details')),
+                ],
+                if (o.canEdit) ...[
                   const SizedBox(height: AppSpacing.md),
                   FilledButton(
                     onPressed: (_busy || !o.canSubmit) ? null : _submit,
@@ -258,7 +273,7 @@ class _StatusCard extends StatelessWidget {
         icon = Icons.verified_outlined;
         color = AppColors.emerald;
         title = 'Approved';
-        text = 'Your salon is live and visible to customers. Services, staff and bookings arrive in the next releases.';
+        text = 'Your salon is live and visible to customers. Manage your services, staff and opening hours below. Bookings arrive in the next releases.';
       case 'REJECTED':
         icon = Icons.error_outline;
         color = AppColors.danger;

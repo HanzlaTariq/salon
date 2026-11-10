@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { HourRow } from './opening-hours';
 import {
   ApplicationRecord, FileDocType, FileKind, Requirements, SalonFileRecord, SalonRecord, SalonStatus, SalonType, parseRequirements,
 } from './salon.types';
@@ -123,9 +124,10 @@ export class SalonsRepository {
   }
 
   // ------------------------------------------------------------------ files
+  /** Application files only (documents, cover, gallery). Catalogue images (CATALOG) are managed by the catalogue module. */
   async listFiles(tx: Tx, salonId: string): Promise<SalonFileRecord[]> {
     const r = await tx.$queryRaw<Row[]>`
-      SELECT * FROM salon_files WHERE salon_id = ${salonId}::uuid AND deleted_at IS NULL ORDER BY created_at, id`;
+      SELECT * FROM salon_files WHERE salon_id = ${salonId}::uuid AND deleted_at IS NULL AND doc_type <> 'CATALOG' ORDER BY created_at, id`;
     return r.map(file);
   }
 
@@ -171,9 +173,26 @@ export class SalonsRepository {
 
   async listPublicPhotos(tx: Tx, salonId: string): Promise<SalonFileRecord[]> {
     const r = await tx.$queryRaw<Row[]>`
-      SELECT * FROM salon_files WHERE salon_id = ${salonId}::uuid AND kind = 'PHOTO' AND deleted_at IS NULL
+      SELECT * FROM salon_files WHERE salon_id = ${salonId}::uuid AND kind = 'PHOTO' AND doc_type IN ('COVER', 'GALLERY') AND deleted_at IS NULL
       ORDER BY (doc_type = 'COVER') DESC, created_at, id`;
     return r.map(file);
+  }
+
+  // ------------------------------------------------------------------ opening hours (Phase 4)
+  async listHours(tx: Tx, salonId: string): Promise<HourRow[]> {
+    const r = await tx.$queryRaw<Row[]>`
+      SELECT weekday, is_closed, opens_minute, closes_minute FROM salon_opening_hours WHERE salon_id = ${salonId}::uuid ORDER BY weekday`;
+    return r.map((x) => ({ weekday: Number(x.weekday), isClosed: Boolean(x.is_closed), opensMinute: num(x.opens_minute), closesMinute: num(x.closes_minute) }));
+  }
+
+  /** Replaces the whole week atomically (the caller runs this inside one transaction with the salon row locked). */
+  async replaceHours(tx: Tx, salonId: string, rows: HourRow[], now: Date): Promise<void> {
+    await tx.$executeRaw`DELETE FROM salon_opening_hours WHERE salon_id = ${salonId}::uuid`;
+    for (const r of rows) {
+      await tx.$executeRaw`
+        INSERT INTO salon_opening_hours (salon_id, weekday, is_closed, opens_minute, closes_minute, updated_at)
+        VALUES (${salonId}::uuid, ${r.weekday}::smallint, ${r.isClosed}::boolean, ${r.opensMinute}::smallint, ${r.closesMinute}::smallint, ${now}::timestamptz)`;
+    }
   }
 
   // ------------------------------------------------------------------ applications

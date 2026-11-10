@@ -69,6 +69,7 @@ class SalonOverview {
     required this.missingDocuments,
     required this.missingPhotos,
     required this.canEdit,
+    required this.canEditProfile,
     required this.canSubmit,
   });
 
@@ -83,6 +84,8 @@ class SalonOverview {
       missingDocuments: (missing['documents'] as List<dynamic>).whereType<String>().toList(),
       missingPhotos: (missing['photos'] as num).toInt(),
       canEdit: j['canEdit'] as bool? ?? false,
+      // Phase 4: a live (approved) salon can still edit its profile, photos, services and hours.
+      canEditProfile: j['canEditProfile'] as bool? ?? (j['canEdit'] as bool? ?? false),
       canSubmit: j['canSubmit'] as bool? ?? false,
     );
   }
@@ -94,6 +97,7 @@ class SalonOverview {
   final List<String> missingDocuments;
   final int missingPhotos;
   final bool canEdit;
+  final bool canEditProfile;
   final bool canSubmit;
 
   SalonFile? fileOf(String docType) {

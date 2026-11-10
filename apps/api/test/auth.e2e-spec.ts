@@ -468,6 +468,8 @@ d('Phase 2: authentication & authorization (real PostgreSQL)', () => {
         'auth/resend-verification', 'auth/reset-password', 'auth/verify-email', 'health/', 'health/ready',
         // Phase 3: approved-salon read endpoints (RLS only exposes APPROVED salons to public-read transactions)
         'public/salons/', 'public/salons/:id',
+        // Phase 4: customer-facing catalogue of an approved salon
+        'public/salons/:id/catalog',
       ].sort());
     });
 

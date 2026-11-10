@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, Req, UploadedFile, UseInterceptors,
+  Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query, Req, UploadedFile, UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
@@ -10,7 +10,7 @@ import { CurrentUser, Public, RequirePermissions, Roles } from '../../common/aut
 import { PERMISSIONS } from '../../common/auth/permissions';
 import { clientContext } from '../../common/http/client-context';
 import { AdminSalonsService } from './admin-salons.service';
-import { AdminListSalonsQuery, CreateSalonDto, PublicListSalonsQuery, ReasonDto, RejectDto, UpdateSalonDto, UploadFileDto } from './dto/salon.dto';
+import { AdminListSalonsQuery, CreateSalonDto, PublicListSalonsQuery, ReasonDto, RejectDto, SetOpeningHoursDto, UpdateSalonDto, UploadFileDto } from './dto/salon.dto';
 import { OwnerSalonsService } from './owner-salons.service';
 import { PublicSalonsService } from './public-salons.service';
 
@@ -40,6 +40,18 @@ export class OwnerSalonsController {
   @Throttle(limit(30))
   async update(@CurrentUser() u: AuthenticatedUser, @Body() dto: UpdateSalonDto, @Req() req: Request) {
     return { data: await this.svc.update(u, dto, clientContext(req)) };
+  }
+
+  @Get('mine/opening-hours')
+  async hours(@CurrentUser() u: AuthenticatedUser) {
+    return { data: await this.svc.getOpeningHours(u) };
+  }
+
+  /** Replaces the whole week (7 entries, ISO weekday 1 = Monday). */
+  @Put('mine/opening-hours')
+  @Throttle(limit(30))
+  async setHours(@CurrentUser() u: AuthenticatedUser, @Body() dto: SetOpeningHoursDto, @Req() req: Request) {
+    return { data: await this.svc.setOpeningHours(u, dto, clientContext(req)) };
   }
 
   @Post('mine/submit')

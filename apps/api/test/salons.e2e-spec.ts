@@ -315,8 +315,10 @@ d('Phase 3: salon registration, review, uploads, public visibility (real Postgre
       expect(audit[0].actor_user_id).toBe(sa.id);
       // approving twice is a conflict, not a silent no-op
       await h.http().post(`/api/v1/admin/salons/${id}/approve`).set(bearer(sa.access)).expect(409);
-      // an approved salon is locked for the owner as well (profile management arrives in Phase 4)
-      await h.http().patch('/api/v1/salons/mine').set(bearer(o.access)).send({ name: 'Renamed' }).expect(409);
+      // Phase 4: a live salon stays editable (profile + photos); identity DOCUMENTS stay locked after submission
+      await h.http().patch('/api/v1/salons/mine').set(bearer(o.access)).send({ description: 'Updated while live' }).expect(200);
+      expect((await upload(o.access, 'DOCUMENT', 'CNIC_FRONT', await png())).status).toBe(409);
+      await h.http().patch('/api/v1/salons/mine').set(bearer(o.access)).send({ status: 'SUSPENDED' }).expect(400);
     });
 
     it('reject requires a reason, shows it to the owner, and allows correction + resubmission', async () => {

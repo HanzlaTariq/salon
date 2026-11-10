@@ -1,0 +1,41 @@
+PHASE 4: Salon profile management, dynamic catalogue, fixed / staff-based pricing, staff-service assignments
+Extract this zip OVER your project folder (same paths). Only NEW and UPDATED files are included.
+
+NEW
+  apps/api/prisma/schema/catalog.prisma
+  apps/api/prisma/schema/migrations/20261111000000_catalog_phase4/migration.sql
+  apps/api/src/modules/catalog/catalog.types.ts            (pricing rules, pure)
+  apps/api/src/modules/catalog/catalog.types.spec.ts
+  apps/api/src/modules/catalog/dto/catalog.dto.ts
+  apps/api/src/modules/catalog/catalog.repository.ts
+  apps/api/src/modules/catalog/catalog.service.ts
+  apps/api/src/modules/catalog/public-catalog.service.ts
+  apps/api/src/modules/catalog/catalog.controllers.ts
+  apps/api/src/modules/catalog/catalog.module.ts
+  apps/api/src/modules/salons/opening-hours.ts             (pure)
+  apps/api/src/modules/salons/opening-hours.spec.ts
+  apps/api/test/catalog.e2e-spec.ts
+  apps/business_app/lib/catalog/catalog_models.dart
+  apps/business_app/lib/catalog/catalog_api.dart
+  apps/business_app/lib/catalog/catalog_screen.dart
+  apps/business_app/lib/catalog/service_form.dart
+  apps/business_app/test/catalog_models_test.dart
+  docs/PHASE4.md
+  PHASE4_CHANGES.txt
+
+UPDATED
+  apps/api/prisma/schema/salon.prisma                      (back-relations; CATALOG doc type note)
+  apps/api/src/app.module.ts                               (CatalogModule)
+  apps/api/src/modules/salons/salon.types.ts               (CATALOG type, PROFILE_EDITABLE, photo count ignores CATALOG)
+  apps/api/src/modules/salons/salons.repository.ts         (opening hours; file lists exclude catalogue images)
+  apps/api/src/modules/salons/owner-salons.service.ts      (edit while APPROVED, hours, canEditProfile)
+  apps/api/src/modules/salons/salons.controllers.ts        (GET/PUT opening-hours)
+  apps/api/src/modules/salons/salons.module.ts             (exports SalonsRepository)
+  apps/api/src/modules/salons/public-salons.service.ts     (openingHours)
+  apps/api/src/modules/salons/dto/salon.dto.ts             (opening-hours DTOs)
+  apps/api/test/salons.e2e-spec.ts                         (approved salon is now editable; documents stay locked)
+  apps/api/test/auth.e2e-spec.ts                           (public route allow-list gets public/salons/:id/catalog)
+  apps/business_app/lib/main.dart, lib/salon/salon_models.dart, lib/salon/salon_home.dart
+  docs/security/risk-register.md                           (R21 closed; R24-R30 added)
+
+COMMANDS: see docs/PHASE4.md (npm install, prisma generate, prisma migrate deploy, tests, flutter checks).

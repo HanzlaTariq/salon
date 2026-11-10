@@ -11,10 +11,11 @@ import { Clock } from '../../common/util/clock';
 import { ENV, Env } from '../../config/env';
 import { insertAudit } from '../audit/audit.types';
 import { MailService } from '../auth/mail/mail.service';
-import { CreateSalonDto, UpdateSalonDto, UploadFileDto } from './dto/salon.dto';
+import { CreateSalonDto, SetOpeningHoursDto, UpdateSalonDto, UploadFileDto } from './dto/salon.dto';
+import { validateWeek, weekFromRows } from './opening-hours';
 import { displayName, fileView, ownerSalonView } from './salon-views';
 import {
-  DOCUMENT_TYPES, FileDocType, MULTI_SLOT_LIMITS, OWNER_EDITABLE, PHOTO_TYPES, SalonRecord, computeMissing, isComplete, isMultiSlot,
+  DOCUMENT_TYPES, FileDocType, MULTI_SLOT_LIMITS, OWNER_EDITABLE, PHOTO_TYPES, PROFILE_EDITABLE, SalonRecord, computeMissing, isComplete, isMultiSlot,
 } from './salon.types';
 import { SalonProfile, SalonsRepository, Tx } from './salons.repository';
 
@@ -87,6 +88,8 @@ export class OwnerSalonsService {
         files: files.map(fileView),
         requirements: { ...req, missing },
         canEdit,
+        /** Phase 4: profile, opening hours and salon photos stay editable while the salon is live (APPROVED). */
+        canEditProfile: PROFILE_EDITABLE.includes(s.status),
         canSubmit: canEdit && isComplete(missing),
         latestApplication: latest && {
           submissionNo: latest.submissionNo, status: latest.status, submittedAt: latest.submittedAt,
@@ -101,7 +104,7 @@ export class OwnerSalonsService {
     await this.tenant.withTenant(toTenantContext(user, salonId), async (tx: Tx) => {
       const cur = await this.repo.lockById(tx, salonId);
       if (!cur) throw notFound();
-      if (!OWNER_EDITABLE.includes(cur.status)) throw locked(cur.status);
+      if (!PROFILE_EDITABLE.includes(cur.status)) throw locked(cur.status);
       const next: SalonProfile = {
         name: dto.name ?? cur.name, salonType: dto.salonType ?? cur.salonType, city: dto.city ?? cur.city,
         area: dto.area ?? cur.area, addressLine: dto.addressLine ?? cur.addressLine, phone: dto.phone ?? cur.phone,
@@ -144,7 +147,8 @@ export class OwnerSalonsService {
       const row = await this.tenant.withTenant(toTenantContext(user, salonId), async (tx: Tx) => {
         const cur = await this.repo.lockById(tx, salonId); // serialises uploads/submit for this salon
         if (!cur) throw notFound();
-        if (!OWNER_EDITABLE.includes(cur.status)) throw locked(cur.status);
+        // Documents are review evidence (DRAFT/REJECTED only); photos stay editable on a live salon.
+        if (!(dto.kind === 'DOCUMENT' ? OWNER_EDITABLE : PROFILE_EDITABLE).includes(cur.status)) throw locked(cur.status);
         const docType = dto.docType;
         if (isMultiSlot(docType)) {
           if ((await this.repo.countActive(tx, salonId, docType)) >= (MULTI_SLOT_LIMITS[docType] as number)) {
@@ -178,7 +182,10 @@ export class OwnerSalonsService {
     const removed = await this.tenant.withTenant(toTenantContext(user, salonId), async (tx: Tx) => {
       const cur = await this.repo.lockById(tx, salonId);
       if (!cur) throw notFound();
-      if (!OWNER_EDITABLE.includes(cur.status)) throw locked(cur.status);
+      const existing = await this.repo.findFile(tx, salonId, fileId);
+      // Catalogue images belong to a category/service and are removed through the catalogue endpoints.
+      if (!existing || existing.docType === 'CATALOG') throw new AppException('NOT_FOUND', 'File not found.', 404);
+      if (!(existing.kind === 'DOCUMENT' ? OWNER_EDITABLE : PROFILE_EDITABLE).includes(cur.status)) throw locked(cur.status);
       const f = await this.repo.softDeleteFile(tx, salonId, fileId, this.clock.now());
       if (!f) throw new AppException('NOT_FOUND', 'File not found.', 404);
       await insertAudit(tx, {
@@ -195,6 +202,30 @@ export class OwnerSalonsService {
     const f = await this.tenant.withTenant(toTenantContext(user, salonId), (tx: Tx) => this.repo.findFile(tx, salonId, fileId));
     if (!f) throw new AppException('NOT_FOUND', 'File not found.', 404);
     return this.sign(f.storageKey, f.contentType, f.docType);
+  }
+
+  /** Always seven days. `configured` is false until the owner has saved hours at least once. */
+  async getOpeningHours(user: AuthenticatedUser) {
+    const salonId = await this.salonIdOf(user);
+    const rows = await this.tenant.withTenant(toTenantContext(user, salonId), (tx: Tx) => this.repo.listHours(tx, salonId));
+    return { configured: rows.length > 0, days: weekFromRows(rows) };
+  }
+
+  async setOpeningHours(user: AuthenticatedUser, dto: SetOpeningHoursDto, meta: ClientContext) {
+    const v = validateWeek(dto.days);
+    if (!v.ok) throw new AppException('VALIDATION_FAILED', v.message, 400);
+    const salonId = await this.salonIdOf(user);
+    await this.tenant.withTenant(toTenantContext(user, salonId), async (tx: Tx) => {
+      const cur = await this.repo.lockById(tx, salonId);
+      if (!cur) throw notFound();
+      if (!PROFILE_EDITABLE.includes(cur.status)) throw locked(cur.status);
+      await this.repo.replaceHours(tx, salonId, v.rows, this.clock.now());
+      await insertAudit(tx, {
+        actorUserId: user.id, actorRole: user.role, action: 'salon.hours_updated', targetType: 'salon', targetId: salonId,
+        salonId, ipAddress: meta.ip, userAgent: meta.userAgent, requestId: meta.requestId,
+      });
+    });
+    return this.getOpeningHours(user);
   }
 
   async submit(user: AuthenticatedUser, meta: ClientContext) {
