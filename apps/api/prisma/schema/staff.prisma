@@ -1,0 +1,70 @@
+// Phase 5: staff invitations, working hours, breaks and leave.
+// Hand-written SQL in migrations/20261112000000_staff_phase5 is the source of truth for CHECK constraints,
+// exclusion constraints (no overlapping breaks / leave), RLS policies and grants. These models mirror the
+// columns for typed access; all Phase 5 queries are parameterized $queryRaw in staff.repository.ts.
+
+/// One-time invitation for a team member. Only the SHA-256 of the token is stored.
+model StaffInvitation {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId        String    @map("salon_id") @db.Uuid
+  staffId        String    @map("staff_id") @db.Uuid
+  email          String    @db.VarChar(254)
+  tokenHash      String    @unique @map("token_hash") @db.VarChar(64)
+  /// PENDING | ACCEPTED | REVOKED (CHECK). Expiry is derived from expiresAt.
+  status         String    @default("PENDING") @db.VarChar(12)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
+  acceptedAt     DateTime? @map("accepted_at") @db.Timestamptz(6)
+  acceptedUserId String?   @map("accepted_user_id") @db.Uuid
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdBy      String    @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("staff_invitations")
+}
+
+/// Weekly working hours. One row per weekday (1 = Monday ... 7 = Sunday), minutes since midnight.
+model StaffWorkingHour {
+  salonId      String   @map("salon_id") @db.Uuid
+  staffId      String   @map("staff_id") @db.Uuid
+  weekday      Int      @db.SmallInt
+  isOff        Boolean  @default(false) @map("is_off")
+  startsMinute Int?     @map("starts_minute") @db.SmallInt
+  endsMinute   Int?     @map("ends_minute") @db.SmallInt
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@id([staffId, weekday])
+  @@map("staff_working_hours")
+}
+
+/// Recurring weekly break. No overlap per staff member and weekday (exclusion constraint).
+model StaffBreak {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId      String   @map("salon_id") @db.Uuid
+  staffId      String   @map("staff_id") @db.Uuid
+  weekday      Int      @db.SmallInt
+  startsMinute Int      @map("starts_minute") @db.SmallInt
+  endsMinute   Int      @map("ends_minute") @db.SmallInt
+  label        String   @default("Break") @db.VarChar(60)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("staff_breaks")
+}
+
+/// Leave in whole days (inclusive). PENDING and APPROVED periods may not overlap per staff member.
+model StaffLeave {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId     String    @map("salon_id") @db.Uuid
+  staffId     String    @map("staff_id") @db.Uuid
+  startsOn    DateTime  @map("starts_on") @db.Date
+  endsOn      DateTime  @map("ends_on") @db.Date
+  /// PENDING | APPROVED | REJECTED | CANCELLED (CHECK).
+  status      String    @default("APPROVED") @db.VarChar(10)
+  reason      String?   @db.VarChar(200)
+  requestedBy String    @map("requested_by") @db.Uuid
+  decidedBy   String?   @map("decided_by") @db.Uuid
+  decidedAt   DateTime? @map("decided_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("staff_leaves")
+}

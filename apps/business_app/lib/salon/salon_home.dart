@@ -4,17 +4,20 @@ import 'package:image_picker/image_picker.dart';
 
 import '../catalog/catalog_api.dart';
 import '../catalog/catalog_screen.dart';
+import '../team/team_api.dart';
+import '../team/team_screen.dart';
 import 'salon_api.dart';
 import 'salon_form.dart';
 import 'salon_models.dart';
 
 /// Owner home for Phase 3: register the salon, upload documents/photos, submit, and follow the review status.
 class SalonHome extends StatefulWidget {
-  const SalonHome({super.key, required this.repository, required this.api, required this.catalogApi});
+  const SalonHome({super.key, required this.repository, required this.api, required this.catalogApi, required this.teamApi});
 
   final AuthRepository repository;
   final SalonApi api;
   final CatalogApi catalogApi;
+  final TeamApi teamApi;
 
   @override
   State<SalonHome> createState() => _SalonHomeState();
@@ -200,6 +203,12 @@ class _SalonHomeState extends State<SalonHome> {
                     onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CatalogScreen(api: widget.catalogApi))),
                     icon: const Icon(Icons.content_cut),
                     label: const Text('Services, staff and hours'),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TeamScreen(api: widget.teamApi))),
+                    icon: const Icon(Icons.groups_outlined),
+                    label: const Text('Team and schedules'),
                   ),
                 ],
                 if (o.canEdit) ...[

@@ -48,4 +48,33 @@ export class TenantDb {
       return fn(tx);
     });
   }
+
+  /**
+   * Access for an UNAUTHENTICATED holder of a staff invitation link (Phase 5). Only the invitation row
+   * whose SHA-256 token hash equals `tokenHash` is visible (policy `invite_token_select`). The caller may
+   * then bind the invitation's salon with `setTenantSalon` inside the same transaction. The hash is
+   * validated here so a malformed value can never widen access. Never use this for anything else.
+   */
+  async withInviteToken<T>(tokenHash: string, fn: (tx: any) => Promise<T>): Promise<T> {
+    if (!/^[0-9a-f]{64}$/.test(tokenHash)) throw new Error('invite token hash must be a SHA-256 hex digest');
+    return this.prisma.$transaction(async (tx: any) => {
+      const t = tx as TenantTx;
+      await t.$queryRaw`SELECT set_config('app.user_id', '', true)`;
+      await t.$queryRaw`SELECT set_config('app.salon_id', '', true)`;
+      await t.$queryRaw`SELECT set_config('app.is_platform_admin', 'false', true)`;
+      await t.$queryRaw`SELECT set_config('app.invite_token_hash', ${tokenHash}, true)`;
+      return fn(tx);
+    });
+  }
+}
+
+/**
+ * Binds the salon context inside an existing transaction (used after the invitation row has been
+ * found through `withInviteToken`). The salon id must come from that verified invitation row, never from input.
+ */
+export async function setTenantSalon(tx: any, salonId: string): Promise<void> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(salonId)) {
+    throw new Error('salonId must be a UUID');
+  }
+  await (tx as TenantTx).$queryRaw`SELECT set_config('app.salon_id', ${salonId}, true)`;
 }

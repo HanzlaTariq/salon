@@ -26,7 +26,7 @@ model SalonOpeningHour {
   @@map("salon_opening_hours")
 }
 
-/// Minimal roster entry. Phase 5 adds invitations, accounts, permissions and schedules to this table.
+/// Roster entry. Phase 5 adds billing flag, bio and permissions; invitations, hours, breaks and leave live in staff.prisma.
 model StaffProfile {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   salonId     String    @map("salon_id") @db.Uuid
@@ -35,6 +35,11 @@ model StaffProfile {
   displayName String    @map("display_name") @db.VarChar(80)
   isOwner     Boolean   @default(false) @map("is_owner")
   isActive    Boolean   @default(true) @map("is_active")
+  /// Phase 5: only ACTIVE staff who perform services are billable (owner counts once).
+  performsServices Boolean  @default(true) @map("performs_services")
+  bio         String?   @db.VarChar(300)
+  /// Phase 5: subset of walk_ins.create, schedule.manage_own (DB CHECK).
+  grantedPermissions String[] @default([]) @map("granted_permissions")
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)

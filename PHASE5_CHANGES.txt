@@ -1,0 +1,42 @@
+PHASE 5: Staff management (team roster, invitations, staff accounts, permissions, working hours, breaks, leave, billing basis)
+Extract this zip OVER your project folder (same paths). Only NEW and UPDATED files are included.
+
+NEW
+  apps/api/prisma/schema/migrations/20261112000000_staff_phase5/migration.sql
+  apps/api/prisma/schema/staff.prisma
+  apps/api/src/modules/staff/staff.types.ts              (pure rules: permissions, hours, breaks, leave, billing)
+  apps/api/src/modules/staff/staff.types.spec.ts
+  apps/api/src/modules/staff/staff.repository.ts
+  apps/api/src/modules/staff/dto/staff.dto.ts
+  apps/api/src/modules/staff/team.service.ts             (owner side)
+  apps/api/src/modules/staff/staff-self.service.ts       (staff own data)
+  apps/api/src/modules/staff/invitation.service.ts       (public accept/preview)
+  apps/api/src/modules/staff/invitation-mailer.ts
+  apps/api/src/modules/staff/staff.controllers.ts
+  apps/api/src/modules/staff/staff.module.ts
+  apps/api/test/staff.e2e-spec.ts
+  apps/business_app/lib/team/team_models.dart
+  apps/business_app/lib/team/team_api.dart
+  apps/business_app/lib/team/team_screen.dart
+  apps/business_app/lib/team/member_screen.dart
+  apps/business_app/lib/team/staff_home.dart
+  apps/business_app/test/team_models_test.dart
+  docs/PHASE5.md
+  PHASE5_CHANGES.txt
+
+UPDATED
+  apps/api/src/common/tenancy/tenant-db.service.ts      (withInviteToken, setTenantSalon)
+  apps/api/src/app.module.ts                            (StaffModule)
+  apps/api/prisma/schema/catalog.prisma                 (StaffProfile: performsServices, bio, grantedPermissions)
+  apps/api/test/auth.e2e-spec.ts                        (2 public staff-invitation routes in the allow-list)
+  apps/business_app/lib/main.dart                       (TeamApi, staff home for SALON_STAFF)
+  apps/business_app/lib/salon/salon_home.dart           (Team and schedules button)
+  docs/security/risk-register.md                        (R25 closed; R31-R41 added)
+
+COMMANDS (run from apps/api)
+  npm install
+  npx prisma generate
+  npx prisma migrate deploy        (applies 20261112000000_staff_phase5; DIRECT_URL required)
+  npm test
+  npm run test:e2e                 (needs TEST_DATABASE_URL and TEST_ADMIN_DATABASE_URL)
+  Flutter: cd apps/business_app; flutter pub get; flutter analyze; flutter test

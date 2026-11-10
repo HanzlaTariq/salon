@@ -470,6 +470,8 @@ d('Phase 2: authentication & authorization (real PostgreSQL)', () => {
         'public/salons/', 'public/salons/:id',
         // Phase 4: customer-facing catalogue of an approved salon
         'public/salons/:id/catalog',
+        // Phase 5: token-in-body invitation preview and accept (single-use, hashed, rate limited)
+        'public/staff-invitations/accept', 'public/staff-invitations/preview',
       ].sort());
     });
 
