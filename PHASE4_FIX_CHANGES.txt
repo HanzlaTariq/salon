@@ -1,0 +1,4 @@
+PHASE 4 FIX 1 (test only, no application code changed)
+Extract OVER your project folder.
+UPDATED
+  apps/api/test/catalog.e2e-spec.ts   (service name 'X' was 1 char, so validation returned 400 before the cross-salon 404 check; now 'Xy')

@@ -258,8 +258,8 @@ d('Phase 4: profile, hours, categories, services, pricing, staff (real PostgreSQ
       await B.a.get(`/categories/${cat}/image/url`).expect(404);
       // B cannot put A's category or staff into B's service
       const bcat = await category(B.a);
-      await B.a.post('/services', { categoryId: cat, name: 'X', durationMinutes: 30, pricing: { mode: 'FIXED', price: 1 } }).expect(404);
-      await B.a.post('/services', { categoryId: bcat, name: 'X', durationMinutes: 30, pricing: { mode: 'STAFF_BASED' }, staff: [{ staffId: st, price: 1 }] }).expect(404);
+      await B.a.post('/services', { categoryId: cat, name: 'Xy', durationMinutes: 30, pricing: { mode: 'FIXED', price: 1 } }).expect(404);
+      await B.a.post('/services', { categoryId: bcat, name: 'Xy', durationMinutes: 30, pricing: { mode: 'STAFF_BASED' }, staff: [{ staffId: st, price: 1 }] }).expect(404);
       const mine = (await B.a.get('/catalog').expect(200)).body.data;
       expect(JSON.stringify(mine)).not.toContain(cat);
       expect(JSON.stringify(mine)).not.toContain(svc);
