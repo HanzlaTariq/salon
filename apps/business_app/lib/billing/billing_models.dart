@@ -1,7 +1,7 @@
-/// Phase 6 models. Mirror the API views in apps/api/src/modules/billing (billing.views.ts, owner-billing.service.ts).
-///
-/// Money is ALWAYS a decimal String such as "600.00" (never a double): it is displayed, never used for arithmetic.
-/// The server computes every amount; the app only shows it.
+// Phase 6 models. Mirror the API views in apps/api/src/modules/billing (billing.views.ts, owner-billing.service.ts).
+//
+// Money is ALWAYS a decimal String such as "600.00" (never a double): it is displayed, never used for arithmetic.
+// The server computes every amount; the app only shows it.
 
 /// "1234.5" -> "Rs. 1,234.50". String based, so no floating point is involved.
 String formatPkr(String? value) {

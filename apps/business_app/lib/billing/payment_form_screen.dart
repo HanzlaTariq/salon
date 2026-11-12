@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_core/flutter_core.dart';
@@ -125,7 +123,7 @@ class _PaymentFormScreenState extends State<PaymentFormScreen> {
               Text('Send exactly this amount. Partial payments are not accepted.', style: theme.textTheme.bodySmall),
               const SizedBox(height: AppSpacing.lg),
               DropdownButtonFormField<PaymentMethodInfo>(
-                value: _method,
+                initialValue: _method,
                 decoration: const InputDecoration(labelText: 'How did you pay?'),
                 items: [for (final m in widget.methods) DropdownMenuItem(value: m, child: Text(m.label))],
                 onChanged: _busy ? null : (m) => setState(() => _method = m ?? _method),
