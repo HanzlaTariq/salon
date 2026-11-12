@@ -64,7 +64,9 @@ jobs:
       - uses: subosito/flutter-action@v2
         with: { channel: stable, cache: true }
       - run: flutter pub get
-      - run: flutter analyze
+      # Newer Flutter (3.47+) reports package:flutter/material.dart as a deprecated INFO. Infos no longer fail the job;
+      # warnings and errors still do. The material_ui migration is a separate, planned change.
+      - run: flutter analyze --no-fatal-infos
 
   secrets-scan:
     runs-on: ubuntu-latest
