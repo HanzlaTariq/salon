@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_core/flutter_core.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../billing/billing_api.dart';
+import '../billing/billing_screen.dart';
 import '../catalog/catalog_api.dart';
 import '../catalog/catalog_screen.dart';
 import '../team/team_api.dart';
@@ -12,12 +14,13 @@ import 'salon_models.dart';
 
 /// Owner home for Phase 3: register the salon, upload documents/photos, submit, and follow the review status.
 class SalonHome extends StatefulWidget {
-  const SalonHome({super.key, required this.repository, required this.api, required this.catalogApi, required this.teamApi});
+  const SalonHome({super.key, required this.repository, required this.api, required this.catalogApi, required this.teamApi, required this.billingApi});
 
   final AuthRepository repository;
   final SalonApi api;
   final CatalogApi catalogApi;
   final TeamApi teamApi;
+  final BillingApi billingApi;
 
   @override
   State<SalonHome> createState() => _SalonHomeState();
@@ -210,6 +213,14 @@ class _SalonHomeState extends State<SalonHome> {
                     icon: const Icon(Icons.groups_outlined),
                     label: const Text('Team and schedules'),
                   ),
+                  if (o.salon.status == 'APPROVED' || o.salon.status == 'SUSPENDED') ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => BillingScreen(api: widget.billingApi))),
+                      icon: const Icon(Icons.credit_card_outlined),
+                      label: const Text('Subscription and payments'),
+                    ),
+                  ],
                 ],
                 if (o.canEdit) ...[
                   const SizedBox(height: AppSpacing.xl),

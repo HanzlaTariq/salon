@@ -1,0 +1,164 @@
+// Phase 6: subscription plans, per-staff invoices, manual payment verification, credits.
+// Hand-written SQL in migrations/20261113000000_billing_phase6 is the source of truth for CHECK constraints,
+// guard triggers (an invoice is paid only after an approved payment, append-only ledgers), RLS and grants.
+// These models mirror the columns for typed access; all Phase 6 queries are parameterized $queryRaw in
+// billing.repository.ts. Money is NUMERIC(12,2) and is always cast to text in SQL (never a JS float).
+
+/// Immutable price version. The current plan is the latest row with effective_from <= now.
+model SubscriptionPlan {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  monthlyPricePerStaff Decimal  @map("monthly_price_per_staff") @db.Decimal(12, 2)
+  yearlyPricePerStaff  Decimal  @map("yearly_price_per_staff") @db.Decimal(12, 2)
+  currency             String   @default("PKR") @db.Char(3)
+  graceDays            Int      @map("grace_days") @db.SmallInt
+  renewalNoticeDays    Int      @map("renewal_notice_days") @db.SmallInt
+  effectiveFrom        DateTime @map("effective_from") @db.Timestamptz(6)
+  note                 String?  @db.VarChar(300)
+  createdBy            String   @map("created_by") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("subscription_plans")
+}
+
+/// Percentage discount applied to new INITIAL / RENEWAL invoices. appliesTo: MONTHLY | YEARLY | ANY.
+model SubscriptionPromotion {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String    @db.VarChar(80)
+  percentOff Decimal   @map("percent_off") @db.Decimal(5, 2)
+  appliesTo  String    @default("ANY") @map("applies_to") @db.VarChar(7)
+  startsOn   DateTime  @map("starts_on") @db.Date
+  endsOn     DateTime? @map("ends_on") @db.Date
+  isActive   Boolean   @default(true) @map("is_active")
+  createdBy  String    @map("created_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("subscription_promotions")
+}
+
+/// Where owners send money. method: JAZZCASH | EASYPAISA | BANK_TRANSFER. Only Super Admin edits.
+model PaymentMethod {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  method        String   @db.VarChar(14)
+  accountTitle  String   @map("account_title") @db.VarChar(80)
+  accountNumber String   @map("account_number") @db.VarChar(40)
+  bankName      String?  @map("bank_name") @db.VarChar(80)
+  instructions  String?  @db.VarChar(500)
+  isActive      Boolean  @default(true) @map("is_active")
+  sortOrder     Int      @default(0) @map("sort_order") @db.SmallInt
+  createdBy     String   @map("created_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("payment_methods")
+}
+
+/// One per salon, created by the first PAID invoice. Dates are Asia/Karachi calendar dates; period_end is EXCLUSIVE.
+model SalonSubscription {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId               String    @unique @map("salon_id") @db.Uuid
+  /// ACTIVE | SUSPENDED (admin). Grace/expiry are derived from the dates.
+  status                String    @default("ACTIVE") @db.VarChar(10)
+  billingCycle          String    @map("billing_cycle") @db.VarChar(7)
+  periodStart           DateTime  @map("period_start") @db.Date
+  periodEnd             DateTime  @map("period_end") @db.Date
+  coveredStaffCount     Int       @map("covered_staff_count")
+  periodUnitPrice       Decimal   @map("period_unit_price") @db.Decimal(12, 2)
+  periodDiscountPercent Decimal   @default(0) @map("period_discount_percent") @db.Decimal(5, 2)
+  periodGraceDays       Int       @default(0) @map("period_grace_days") @db.SmallInt
+  suspendedReason       String?   @map("suspended_reason") @db.VarChar(500)
+  suspendedAt           DateTime? @map("suspended_at") @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("salon_subscriptions")
+}
+
+/// kind: INITIAL | RENEWAL | TOP_UP | COMPLIMENTARY. status: OPEN | PAID | VOID. Amounts are snapshots and immutable.
+model Invoice {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId                String    @map("salon_id") @db.Uuid
+  invoiceNo              String    @unique @map("invoice_no") @db.VarChar(24)
+  kind                   String    @db.VarChar(14)
+  status                 String    @default("OPEN") @db.VarChar(6)
+  billingCycle           String    @map("billing_cycle") @db.VarChar(7)
+  staffCount             Int       @map("staff_count")
+  unitPrice              Decimal   @map("unit_price") @db.Decimal(12, 2)
+  discountPercent        Decimal   @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  promotionId            String?   @map("promotion_id") @db.Uuid
+  promotionName          String?   @map("promotion_name") @db.VarChar(80)
+  planId                 String?   @map("plan_id") @db.Uuid
+  graceDays              Int       @default(0) @map("grace_days") @db.SmallInt
+  prorationDaysRemaining Int?      @map("proration_days_remaining") @db.SmallInt
+  prorationDaysTotal     Int?      @map("proration_days_total") @db.SmallInt
+  subtotal               Decimal   @db.Decimal(12, 2)
+  discountAmount         Decimal   @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  creditApplied          Decimal   @default(0) @map("credit_applied") @db.Decimal(12, 2)
+  total                  Decimal   @db.Decimal(12, 2)
+  currency               String    @default("PKR") @db.Char(3)
+  periodStart            DateTime? @map("period_start") @db.Date
+  periodEnd              DateTime? @map("period_end") @db.Date
+  issuedAt               DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  paidAt                 DateTime? @map("paid_at") @db.Timestamptz(6)
+  voidedAt               DateTime? @map("voided_at") @db.Timestamptz(6)
+  voidReason             String?   @map("void_reason") @db.VarChar(300)
+  createdBy              String    @map("created_by") @db.Uuid
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([salonId, id])
+  @@map("invoices")
+}
+
+/// status: PENDING | NEEDS_INFO | APPROVED | REJECTED. Never shown as successful before a reviewer approves it.
+model Payment {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId            String    @map("salon_id") @db.Uuid
+  invoiceId          String    @map("invoice_id") @db.Uuid
+  method             String    @db.VarChar(14)
+  transactionId      String    @map("transaction_id") @db.VarChar(40)
+  claimedAmount      Decimal   @map("claimed_amount") @db.Decimal(12, 2)
+  paidOn             DateTime  @map("paid_on") @db.Date
+  senderName         String?   @map("sender_name") @db.VarChar(80)
+  note               String?   @db.VarChar(300)
+  receiptKey         String    @unique @map("receipt_key") @db.VarChar(300)
+  receiptContentType String    @map("receipt_content_type") @db.VarChar(60)
+  receiptSizeBytes   Int       @map("receipt_size_bytes")
+  receiptSha256      String    @map("receipt_sha256") @db.Char(64)
+  status             String    @default("PENDING") @db.VarChar(12)
+  submittedBy        String    @map("submitted_by") @db.Uuid
+  submittedAt        DateTime  @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  reviewedBy         String?   @map("reviewed_by") @db.Uuid
+  reviewedAt         DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  reviewReason       String?   @map("review_reason") @db.VarChar(500)
+  receivedAmount     Decimal?  @map("received_amount") @db.Decimal(12, 2)
+  updatedAt          DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("payments")
+}
+
+/// Append-only ledger. Positive = credit earned, negative = credit spent on an invoice. Balance = SUM(amount) >= 0.
+model SalonCredit {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId   String   @map("salon_id") @db.Uuid
+  amount    Decimal  @db.Decimal(12, 2)
+  reason    String   @db.VarChar(24)
+  invoiceId String?  @map("invoice_id") @db.Uuid
+  note      String?  @db.VarChar(200)
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("salon_credits")
+}
+
+/// Append-only history of the billable staff count (reason: INVOICE | ACTIVATION | STAFF_CHANGE).
+model SubscriptionStaffSnapshot {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId       String   @map("salon_id") @db.Uuid
+  billableStaff Int      @map("billable_staff")
+  coveredStaff  Int?     @map("covered_staff")
+  reason        String   @db.VarChar(16)
+  invoiceId     String?  @map("invoice_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("subscription_staff_snapshots")
+}

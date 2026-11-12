@@ -7,6 +7,10 @@ import { AuthProvider } from './features/auth/AuthContext';
 import { LoginPage } from './features/auth/LoginPage';
 import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from './features/auth/RecoveryPages';
 import { RequireAuth } from './features/auth/RequireAuth';
+import { BillingSettingsPage } from './features/billing/BillingSettingsPage';
+import { PaymentsPage } from './features/billing/PaymentsPage';
+import { SubscriptionDetailPage } from './features/billing/SubscriptionDetailPage';
+import { SubscriptionsPage } from './features/billing/SubscriptionsPage';
 import { SecurityPage } from './features/security/SecurityPage';
 import { SalonDetailPage } from './features/salons/SalonDetailPage';
 import { SalonsPage } from './features/salons/SalonsPage';
@@ -43,6 +47,10 @@ createRoot(document.getElementById('root')!).render(
                 <Route index element={<OverviewPage />} />
                 <Route path="salons" element={<SalonsPage />} />
                 <Route path="salons/:id" element={<SalonDetailPage />} />
+                <Route path="payments" element={<PaymentsPage />} />
+                <Route path="subscriptions" element={<SubscriptionsPage />} />
+                <Route path="subscriptions/:id" element={<SubscriptionDetailPage />} />
+                <Route path="billing-settings" element={<BillingSettingsPage />} />
                 <Route path="users" element={<UsersPage />} />
                 <Route path="security" element={<SecurityPage />} />
                 <Route path="design-system" element={<DesignSystemPage />} />

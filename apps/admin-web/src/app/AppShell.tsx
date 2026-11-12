@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { LayoutDashboard, LogOut, Menu, Palette, Scissors, ShieldCheck, Users, X } from 'lucide-react';
+import { CreditCard, Landmark, LayoutDashboard, LogOut, Menu, Palette, Receipt, Scissors, ShieldCheck, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
@@ -9,6 +9,9 @@ import { apiFetch } from '../lib/api';
 const nav = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true, roles: null as string[] | null },
   { to: '/salons', label: 'Salons', icon: Scissors, end: false, roles: ['SUPER_ADMIN', 'SUPPORT'] },
+  { to: '/payments', label: 'Payments', icon: Receipt, end: false, roles: ['SUPER_ADMIN', 'FINANCE'] },
+  { to: '/subscriptions', label: 'Subscriptions', icon: CreditCard, end: false, roles: ['SUPER_ADMIN', 'SUPPORT', 'FINANCE'] },
+  { to: '/billing-settings', label: 'Billing settings', icon: Landmark, end: false, roles: ['SUPER_ADMIN', 'SUPPORT', 'FINANCE'] },
   { to: '/users', label: 'Users', icon: Users, end: false, roles: ['SUPER_ADMIN', 'SUPPORT'] },
   { to: '/security', label: 'Security', icon: ShieldCheck, end: false, roles: null },
   { to: '/design-system', label: 'Design system', icon: Palette, end: false, roles: null },
@@ -24,6 +27,14 @@ export function AppShell() {
     enabled: canSeeSalons,
     refetchInterval: 60_000,
     queryFn: () => apiFetch<{ pending: number }>('/admin/salons/stats'),
+  });
+  // Payments waiting for verification (Super Admin / Finance only; refreshes every minute).
+  const canVerify = !!user && ['SUPER_ADMIN', 'FINANCE'].includes(user.role) && !mfaEnrollmentRequired;
+  const toVerify = useQuery({
+    queryKey: ['billing-overview'],
+    enabled: canVerify,
+    refetchInterval: 60_000,
+    queryFn: () => apiFetch<{ pendingPayments: number }>('/admin/billing/overview'),
   });
   const items = nav.filter((n) => (n.roles === null || (user && n.roles.includes(user.role))) && (!mfaEnrollmentRequired || n.to === '/security'));
   const links = (
@@ -42,6 +53,11 @@ export function AppShell() {
         >
           <Icon className="size-4" aria-hidden />
           {label}
+          {to === '/payments' && (toVerify.data?.pendingPayments ?? 0) > 0 && (
+            <span aria-label={`${toVerify.data?.pendingPayments} payments to verify`} className="ml-auto rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-ink">
+              {toVerify.data?.pendingPayments}
+            </span>
+          )}
           {to === '/salons' && (pending.data?.pending ?? 0) > 0 && (
             <span aria-label={`${pending.data?.pending} pending applications`} className="ml-auto rounded-full bg-gold px-2 py-0.5 text-xs font-semibold text-ink">
               {pending.data?.pending}

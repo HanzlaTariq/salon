@@ -19,6 +19,7 @@ import {
   normalizePermissions, todayInSalonTz, validateBreaks, validateLeavePeriod, validateStaffWeek,
 } from './staff.types';
 import { TokenService } from '../auth/token.service';
+import { BillingCore } from '../billing/billing-core.service';
 
 /** Views: the ONLY shapes the owner API returns for staff data. */
 export const memberView = (m: StaffMemberRecord, now: Date) => ({
@@ -77,6 +78,7 @@ export class TeamService {
     private readonly tokens: TokenService,
     private readonly mailer: InvitationMailer,
     private readonly clock: Clock,
+    private readonly billing: BillingCore,
   ) {}
 
   private async scoped<T>(user: AuthenticatedUser, write: boolean, fn: (tx: Tx, salon: SalonRecord, now: Date) => Promise<T>): Promise<T> {
@@ -88,6 +90,15 @@ export class TeamService {
       if (write && !PROFILE_EDITABLE.includes(salon.status)) throw locked(salon.status);
       return fn(tx, salon, this.clock.now());
     });
+  }
+
+  /**
+   * Phase 6: a change to who is billable (added, activated, deactivated, performs-services toggled, removed) must be
+   * reflected in billing in the SAME transaction: a prorated top-up invoice for added staff, a credit for removed staff.
+   * Runs under the salon row lock taken by scoped(write).
+   */
+  private reconcileBilling(tx: Tx, user: AuthenticatedUser, meta: ClientContext, salonId: string, now: Date): Promise<void> {
+    return this.billing.reconcile(tx, salonId, { id: user.id, role: user.role, meta }, now);
   }
 
   private audit(user: AuthenticatedUser, meta: ClientContext, salonId: string, action: string, targetType: string, targetId: string, metadata?: Record<string, unknown>) {
@@ -153,6 +164,7 @@ export class TeamService {
           permissions: perms.value,
         }, now);
         await insertAudit(tx, this.audit(user, meta, salon.id, 'staff.created', 'staff_profile', m.id, { isOwner: self }));
+        await this.reconcileBilling(tx, user, meta, salon.id, now);
         return memberView({ ...m, inviteId: null, inviteEmail: null, inviteExpiresAt: null }, now);
       });
     } catch (e) {
@@ -188,6 +200,7 @@ export class TeamService {
         fields: Object.keys(dto).filter((k) => (dto as Record<string, unknown>)[k] !== undefined),
         ...(cur.isActive !== next.isActive ? { active: next.isActive } : {}),
       }));
+      await this.reconcileBilling(tx, user, meta, salon.id, now);
       return memberView((await this.findOrThrow(tx, salon.id, id)), now);
     });
     await this.revokeSessions(deactivatedUserId, 'STAFF_DEACTIVATED', this.clock.now());
@@ -204,6 +217,7 @@ export class TeamService {
       await this.repo.softDeleteMember(tx, salon.id, id, now);
       userId = cur.userId;
       await insertAudit(tx, this.audit(user, meta, salon.id, 'staff.deleted', 'staff_profile', id, { hadAccount: cur.userId !== null }));
+      await this.reconcileBilling(tx, user, meta, salon.id, now);
     });
     await this.revokeSessions(userId, 'STAFF_REMOVED', this.clock.now());
   }
