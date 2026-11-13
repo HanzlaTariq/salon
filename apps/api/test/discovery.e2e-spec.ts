@@ -429,8 +429,16 @@ d('Phase 7: discovery - search, nearby, filters, availability preview, listing r
     await asApp({ user: otherOwnerId, salon: other.salonId }, async (c) => {
       expect(await count(c, 'staff_working_hours', live.staff.Ali)).toBe(0);
     });
-    // PostGIS is not installed in the public (Data API) schema; the runtime role reaches it only through the wrapper function
-    expect((await aq(`SELECT count(*)::int AS n FROM pg_tables WHERE tablename = 'spatial_ref_sys' AND schemaname = 'public'`)).rows[0].n).toBe(0);
+    // PostGIS sits in `extensions` on Supabase (our migration installs it there) or in `public` on the docker image used by
+    // local dev and CI. Either way the Supabase API roles (when they exist) must have no access to its tables.
+    const ext = (await aq(`SELECT n.nspname AS schema FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'postgis'`)).rows[0].schema as string;
+    expect(['extensions', 'public']).toContain(ext);
+    const apiRoles = await aq(`SELECT rolname FROM pg_roles WHERE rolname IN ('anon', 'authenticated')`);
+    for (const r of apiRoles.rows) {
+      const g = await aq(`SELECT count(*)::int AS n FROM information_schema.role_table_grants WHERE grantee = $1 AND table_name = 'spatial_ref_sys' AND privilege_type <> 'REFERENCES'`, [r.rolname]);
+      expect(g.rows[0].n).toBe(0);
+    }
+    // the runtime role reaches PostGIS only through the wrapper function
     await asApp({}, async (c) => {
       expect((await c.query(`SELECT discovery_distance_m(31.5, 74.3, 31.5, 74.3) AS m`)).rows[0].m).toBe(0);
     });
