@@ -3,6 +3,7 @@ import { AppException } from '../../common/errors/app-exception';
 import { ObjectStorage } from '../../common/storage/object-storage';
 import { TenantDb } from '../../common/tenancy/tenant-db.service';
 import { ENV, Env } from '../../config/env';
+import { ListingPolicy } from '../listing/listing';
 import { weekFromRows } from './opening-hours';
 import { SalonRecord, SalonType } from './salon.types';
 import { SalonsRepository, Tx } from './salons.repository';
@@ -16,7 +17,8 @@ const publicView = (s: SalonRecord) => ({
 /**
  * Public visibility rule: a salon is reachable here ONLY while APPROVED. Enforced twice: by the SQL
  * filter and by the RLS policy `public_read_approved` (which needs `app.public_read`, set by withPublicRead).
- * Search, nearby (PostGIS), ratings and prices arrive in Phase 7.
+ * Phase 7: it must also be LISTED (free trial or running subscription: `salon_is_listed`). Search with filters, nearby
+ * (PostGIS), prices and availability live in the discovery module; this simple list/detail uses the same rule.
  */
 @Injectable()
 export class PublicSalonsService {
@@ -27,11 +29,12 @@ export class PublicSalonsService {
     private readonly repo: SalonsRepository,
     private readonly storage: ObjectStorage,
     @Inject(ENV) private readonly env: Env,
+    private readonly listing: ListingPolicy,
   ) {}
 
   async list(f: { q?: string; city?: string; area?: string; type?: SalonType; page: number; pageSize: number }) {
-    const r = await this.tenant.withPublicRead((tx: Tx) =>
-      this.repo.publicList(tx, { q: f.q, city: f.city, area: f.area, type: f.type, limit: f.pageSize, offset: (f.page - 1) * f.pageSize }),
+    const r = await this.tenant.withPublicRead(async (tx: Tx) =>
+      this.repo.publicList(tx, { q: f.q, city: f.city, area: f.area, type: f.type, limit: f.pageSize, offset: (f.page - 1) * f.pageSize, ...(await this.listing.params(tx)) }),
     );
     return { items: r.items.map(publicView), total: r.total, page: f.page, pageSize: f.pageSize };
   }
@@ -40,6 +43,8 @@ export class PublicSalonsService {
     const { salon, photos, hours } = await this.tenant.withPublicRead(async (tx: Tx) => {
       const s = await this.repo.findById(tx, id);
       if (!s || s.status !== 'APPROVED') throw new AppException('NOT_FOUND', 'Salon not found.', 404);
+      const p = await this.listing.params(tx);
+      if (!(await this.repo.isListed(tx, id, p.trialDays, p.today))) throw new AppException('NOT_FOUND', 'Salon not found.', 404);
       return { salon: s, photos: await this.repo.listPublicPhotos(tx, id), hours: await this.repo.listHours(tx, id) };
     });
     const signed = await Promise.all(

@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   flutter_core:
     path: ../../packages/flutter_core
+  http: ^1.2.2
+  geolocator: ^13.0.1
 
   cupertino_icons: ^1.0.8
 

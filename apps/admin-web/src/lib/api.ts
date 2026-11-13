@@ -66,7 +66,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, fetchImp
   }
 }
 
-export function apiJson<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
+export function apiJson<T>(path: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
   return apiFetch<T>(path, {
     method,
     headers: { 'Content-Type': 'application/json' },

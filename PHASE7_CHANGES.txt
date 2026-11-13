@@ -1,0 +1,57 @@
+PHASE 7 CHANGES (extract over the project folder; same paths)
+
+NEW
+apps/api/prisma/schema/migrations/20261114000000_discovery_phase7/migration.sql
+apps/api/src/modules/listing/listing.ts
+apps/api/src/modules/listing/listing.spec.ts
+apps/api/src/modules/discovery/discovery.types.ts
+apps/api/src/modules/discovery/discovery.types.spec.ts
+apps/api/src/modules/discovery/discovery.repository.ts
+apps/api/src/modules/discovery/discovery.service.ts
+apps/api/src/modules/discovery/discovery.controllers.ts
+apps/api/src/modules/discovery/discovery.module.ts
+apps/api/src/modules/discovery/dto/discovery.dto.ts
+apps/api/test/discovery.e2e-spec.ts
+apps/customer_app/lib/discovery/format.dart
+apps/customer_app/lib/discovery/discovery_models.dart
+apps/customer_app/lib/discovery/discovery_filters.dart
+apps/customer_app/lib/discovery/discovery_api.dart
+apps/customer_app/lib/discovery/location_service.dart
+apps/customer_app/lib/discovery/discovery_controller.dart
+apps/customer_app/lib/discovery/salon_card.dart
+apps/customer_app/lib/discovery/filters_sheet.dart
+apps/customer_app/lib/discovery/discovery_home_screen.dart
+apps/customer_app/lib/discovery/salon_profile_screen.dart
+apps/customer_app/lib/discovery/availability_screen.dart
+apps/customer_app/test/format_test.dart
+apps/customer_app/test/discovery_filters_test.dart
+apps/customer_app/test/discovery_models_test.dart
+docs/PHASE7.md
+
+UPDATED
+apps/api/src/app.module.ts                          (DiscoveryModule; log serializer strips query strings)
+apps/api/src/modules/salons/salons.module.ts        (imports ListingModule)
+apps/api/src/modules/salons/salons.repository.ts    (publicList applies salon_is_listed; isListed())
+apps/api/src/modules/salons/public-salons.service.ts(list + detail apply the listing rule)
+apps/api/src/modules/catalog/catalog.module.ts      (imports ListingModule)
+apps/api/src/modules/catalog/public-catalog.service.ts (catalogue hidden when not listed)
+apps/api/src/modules/billing/billing.module.ts      (imports ListingModule)
+apps/api/src/modules/billing/owner-billing.service.ts (summary.listing)
+apps/api/test/auth.e2e-spec.ts                      (public-route allow-list: 3 discovery routes)
+apps/admin-web/src/lib/api.ts                       (apiJson accepts PUT)
+apps/admin-web/src/features/billing/BillingSettingsPage.tsx (free trial card)
+apps/customer_app/lib/main.dart                     (discovery home after sign-in)
+apps/customer_app/pubspec.yaml                      (http, geolocator)
+apps/customer_app/android/app/src/main/AndroidManifest.xml (INTERNET, coarse location)
+apps/customer_app/ios/Runner/Info.plist             (location usage text)
+docs/security/risk-register.md                      (R42 updated, R51-R61 added)
+
+COMMANDS (PowerShell or CMD, from the project root)
+  cd apps\api
+  npx prisma migrate deploy
+  npm test
+  npm run test:e2e
+  cd ..\customer_app
+  flutter pub get
+  flutter analyze
+  flutter test

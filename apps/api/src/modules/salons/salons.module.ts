@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ENV, Env } from '../../config/env';
+import { ListingModule } from '../listing/listing';
 import { AdminSalonsService } from './admin-salons.service';
 import { OwnerSalonsService } from './owner-salons.service';
 import { PublicSalonsService } from './public-salons.service';
@@ -10,6 +11,7 @@ import { SalonsRepository } from './salons.repository';
 
 @Module({
   imports: [
+    ListingModule,
     // Risk R1: multer >= 2.5.0 (package.json override); NO async fileFilter; size, part and field counts capped
     // while streaming; files are held in memory only until validated and re-encoded (never written to disk).
     MulterModule.registerAsync({

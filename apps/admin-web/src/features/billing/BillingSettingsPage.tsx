@@ -19,6 +19,7 @@ export function BillingSettingsPage() {
       <h1 className="text-4xl">Billing settings</h1>
       <p className="mt-1 text-muted">Prices, promotions and where owners send their payments. {isSuper ? 'Every change is recorded in the audit log.' : 'Read-only: only a Super Admin can change these.'}</p>
       <PlanSection isSuper={isSuper} />
+      <DiscoverySection isSuper={isSuper} />
       <PromotionsSection isSuper={isSuper} />
       <MethodsSection isSuper={isSuper} />
     </div>
@@ -207,6 +208,51 @@ function MethodsSection({ isSuper }: { isSuper: boolean }) {
       </Card>
       <ConfirmDialog open={confirm} title={editing ? 'Change where owners send money?' : 'Add this payment method?'} confirmLabel={editing ? 'Save changes' : 'Add'} destructive={editing !== null} loading={save.isPending} onConfirm={() => save.mutate()} onCancel={() => setConfirm(false)}>
         <p>Check the account number carefully: owners will send real money here. {METHOD_LABEL[f.method]} · {f.accountTitle.trim()} · {f.accountNumber.trim()}</p>
+        {errText(save.error) && <p role="alert" className="mt-2 text-danger">{errText(save.error)}</p>}
+      </ConfirmDialog>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------- public listing: free trial (Phase 7)
+interface DiscoverySettings { trialDays: number; defaultTrialDays: number; maxTrialDays: number }
+
+function DiscoverySection({ isSuper }: { isSuper: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['discovery-settings'], queryFn: () => apiFetch<DiscoverySettings>('/admin/discovery/settings') });
+  const [days, setDays] = useState('');
+  const [error, setError] = useState<string | undefined>();
+  const [confirm, setConfirm] = useState(false);
+  const save = useMutation({
+    mutationFn: () => apiJson('/admin/discovery/settings', 'PUT', { trialDays: Number(days) }),
+    onSuccess: () => { setConfirm(false); setDays(''); void qc.invalidateQueries({ queryKey: ['discovery-settings'] }); },
+  });
+  function review(e: FormEvent) {
+    e.preventDefault();
+    const max = q.data?.maxTrialDays ?? 90;
+    if (!/^\d{1,2}$/.test(days.trim()) || Number(days) > max) { setError(`Whole days from 0 to ${max}.`); return; }
+    setError(undefined);
+    setConfirm(true);
+  }
+  return (
+    <section className="mt-8">
+      <h2 className="text-2xl">Free trial in public search</h2>
+      <Card className="mt-3">
+        {q.isLoading ? <Skeleton className="h-16" /> : q.error ? <ErrorState message={(q.error as ApiError).message} onRetry={() => void q.refetch()} /> : (
+          <>
+            <p className="text-sm text-muted">A newly approved salon is shown to customers for this many days. After that it is listed only while its subscription is active or in its grace period. Salons that already subscribed are not affected.</p>
+            <p className="mt-3 font-serif text-2xl">{q.data?.trialDays} {q.data?.trialDays === 1 ? 'day' : 'days'}</p>
+          </>
+        )}
+        {isSuper && (
+          <form className="mt-6 flex flex-wrap items-end gap-4 border-t border-line pt-6" onSubmit={review} noValidate>
+            <div className="w-48"><Input label="Trial length (days)" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} error={error} /></div>
+            <Button type="submit">Change trial length</Button>
+          </form>
+        )}
+      </Card>
+      <ConfirmDialog open={confirm} title="Change the free trial length?" confirmLabel="Change" loading={save.isPending} onConfirm={() => save.mutate()} onCancel={() => setConfirm(false)}>
+        <p>New trial length: {days} days. It applies immediately to every salon that has never subscribed: salons whose trial would already be over disappear from search.</p>
         {errText(save.error) && <p role="alert" className="mt-2 text-danger">{errText(save.error)}</p>}
       </ConfirmDialog>
     </section>

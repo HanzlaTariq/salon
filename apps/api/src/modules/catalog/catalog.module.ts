@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ENV, Env } from '../../config/env';
+import { ListingModule } from '../listing/listing';
 import { SalonsModule } from '../salons/salons.module';
 import { CatalogRepository } from './catalog.repository';
 import { CatalogService } from './catalog.service';
@@ -10,6 +11,7 @@ import { PublicCatalogService } from './public-catalog.service';
 
 @Module({
   imports: [
+    ListingModule,
     SalonsModule, // exports SalonsRepository (salon lookup + file rows)
     // Same upload hardening as the salons module (risk R1): memory storage, size/part/field caps while streaming,
     // no async fileFilter. Images are validated and re-encoded by processUpload before they are stored.

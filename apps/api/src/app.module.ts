@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { randomUUID } from 'crypto';
 import { LoggerModule } from 'nestjs-pino';
+import { stdSerializers } from 'pino';
 import { buildThrottlerOptions } from './common/rate-limit/throttler.config';
 import { TenancyModule } from './common/tenancy/tenancy.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
@@ -13,6 +14,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthorizationGuard, JwtAuthGuard } from './modules/auth/guards';
 import { CatalogModule } from './modules/catalog/catalog.module';
+import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { SalonsModule } from './modules/salons/salons.module';
 import { StaffModule } from './modules/staff/staff.module';
@@ -45,6 +47,14 @@ const env = parseEnv();
           ],
           censor: '[REDACTED]',
         },
+        // Phase 7 privacy: query strings carry search text and (optional) coordinates. Log the path only, never the query.
+        serializers: {
+          req: (req: Parameters<typeof stdSerializers.req>[0]) => {
+            const out = stdSerializers.req(req);
+            if (typeof out.url === 'string') out.url = out.url.split('?')[0];
+            return out;
+          },
+        },
         autoLogging: { ignore: (req) => req.url?.startsWith('/api/v1/health') ?? false },
         transport:
           env.NODE_ENV === 'development' ? { target: 'pino-pretty', options: { singleLine: true } } : undefined,
@@ -61,6 +71,7 @@ const env = parseEnv();
     CatalogModule,
     StaffModule,
     BillingModule,
+    DiscoveryModule,
     HealthModule,
   ],
   providers: [

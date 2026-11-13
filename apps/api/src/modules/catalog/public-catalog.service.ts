@@ -3,6 +3,7 @@ import { AppException } from '../../common/errors/app-exception';
 import { ObjectStorage } from '../../common/storage/object-storage';
 import { TenantDb } from '../../common/tenancy/tenant-db.service';
 import { ENV, Env } from '../../config/env';
+import { ListingPolicy } from '../listing/listing';
 import { SalonsRepository, Tx } from '../salons/salons.repository';
 import { CatalogRepository } from './catalog.repository';
 import { priceRange } from './catalog.types';
@@ -25,12 +26,16 @@ export class PublicCatalogService {
     private readonly salons: SalonsRepository,
     private readonly storage: ObjectStorage,
     @Inject(ENV) private readonly env: Env,
+    private readonly listing: ListingPolicy,
   ) {}
 
   async catalog(salonId: string) {
     const { cats, services, assigns } = await this.tenant.withPublicRead(async (tx: Tx) => {
       const s = await this.salons.findById(tx, salonId);
       if (!s || s.status !== 'APPROVED') throw new AppException('NOT_FOUND', 'Salon not found.', 404);
+      // Phase 7: a salon that is not currently listed (trial over, no running subscription) has no public pages either.
+      const p = await this.listing.params(tx);
+      if (!(await this.salons.isListed(tx, salonId, p.trialDays, p.today))) throw new AppException('NOT_FOUND', 'Salon not found.', 404);
       const [cats, services, assigns] = await Promise.all([
         this.repo.publicCategories(tx, salonId), this.repo.publicServices(tx, salonId), this.repo.publicAssignments(tx, salonId),
       ]);

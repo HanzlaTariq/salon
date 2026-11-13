@@ -270,7 +270,14 @@ export class SalonsRepository {
   }
 
   // ------------------------------------------------------------------ public queries
-  async publicList(tx: Tx, f: { q?: string; city?: string; area?: string; type?: SalonType; limit: number; offset: number }): Promise<{ items: SalonRecord[]; total: number }> {
+  /** Phase 7 visibility rule (APPROVED + free trial or running subscription). Used by every public salon page. */
+  async isListed(tx: Tx, id: string, trialDays: number, today: string): Promise<boolean> {
+    const r = await tx.$queryRaw<Row[]>`
+      SELECT 1 AS ok FROM salons WHERE id = ${id}::uuid AND status = 'APPROVED' AND salon_is_listed(id, approved_at, ${trialDays}::int, ${today}::date)`;
+    return r.length > 0;
+  }
+
+  async publicList(tx: Tx, f: { q?: string; city?: string; area?: string; type?: SalonType; limit: number; offset: number; trialDays: number; today: string }): Promise<{ items: SalonRecord[]; total: number }> {
     const q = f.q ? likePattern(f.q) : null;
     const city = f.city ?? null;
     const area = f.area ?? null;
@@ -278,6 +285,7 @@ export class SalonsRepository {
     const rows = await tx.$queryRaw<Row[]>`
       SELECT * FROM salons
       WHERE status = 'APPROVED'
+        AND salon_is_listed(id, approved_at, ${f.trialDays}::int, ${f.today}::date)
         AND (${q}::text IS NULL OR name ILIKE ${q}::text)
         AND (${city}::text IS NULL OR lower(city) = lower(${city}::text))
         AND (${area}::text IS NULL OR lower(area) = lower(${area}::text))
@@ -286,6 +294,7 @@ export class SalonsRepository {
     const count = await tx.$queryRaw<Row[]>`
       SELECT count(*)::int AS n FROM salons
       WHERE status = 'APPROVED'
+        AND salon_is_listed(id, approved_at, ${f.trialDays}::int, ${f.today}::date)
         AND (${q}::text IS NULL OR name ILIKE ${q}::text)
         AND (${city}::text IS NULL OR lower(city) = lower(${city}::text))
         AND (${area}::text IS NULL OR lower(area) = lower(${area}::text))

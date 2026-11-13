@@ -9,6 +9,7 @@ import { TenantDb } from '../../common/tenancy/tenant-db.service';
 import { processUpload } from '../../common/uploads/process-upload';
 import { Clock } from '../../common/util/clock';
 import { ENV, Env } from '../../config/env';
+import { ListingPolicy, listingState } from '../listing/listing';
 import { SalonRecord } from '../salons/salon.types';
 import { SalonsRepository, Tx } from '../salons/salons.repository';
 import { BillingActor, BillingCore, conflict, planPrices } from './billing-core.service';
@@ -45,6 +46,7 @@ export class OwnerBillingService {
     private readonly mailer: BillingMailer,
     private readonly storage: ObjectStorage,
     private readonly clock: Clock,
+    private readonly listingPolicy: ListingPolicy,
   ) {}
 
   /** The owner's salon id comes from the database (owner_user_id = caller), never from the request. */
@@ -76,6 +78,12 @@ export class OwnerBillingService {
         this.repo.listPromotions(tx), this.repo.listCredits(tx, salon.id, 10),
       ]);
       const sub = subscriptionView(subRec, today);
+      // Phase 7: tells the owner whether customers can currently find the salon (free trial / subscription).
+      const trialDays = await this.listingPolicy.trialDays(tx);
+      const listing = listingState({
+        status: salon.status, approvedAt: salon.approvedAt ?? null,
+        subscription: subRec ? { status: subRec.status, periodEnd: subRec.periodEnd, graceDays: subRec.periodGraceDays } : null, trialDays, today,
+      });
 
       let quotes: Record<string, unknown> | null = null;
       if (plan && billable >= 1) {
@@ -107,6 +115,8 @@ export class OwnerBillingService {
         /** Active staff who perform services: the number you are billed for. */
         billableStaff: billable,
         subscription: sub,
+        /** Public visibility: `listed` false means customers cannot find the salon. `trialEndsOn` is the last free day. */
+        listing: { listed: listing.listed, reason: listing.reason, trialEndsOn: listing.trialEndsOn },
         quotes,
         canCreateInvoice,
         creditBalance: credit,

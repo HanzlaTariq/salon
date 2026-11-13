@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ENV, Env } from '../../config/env';
+import { ListingModule } from '../listing/listing';
 import { SalonsModule } from '../salons/salons.module';
 import { AdminBillingService } from './admin-billing.service';
 import { BillingCore } from './billing-core.service';
@@ -25,6 +26,7 @@ import { OwnerBillingService } from './owner-billing.service';
       }),
     }),
     SalonsModule,
+    ListingModule,
   ],
   controllers: [OwnerBillingController, AdminBillingController],
   providers: [BillingRepository, BillingCore, BillingMailer, OwnerBillingService, AdminBillingService],
