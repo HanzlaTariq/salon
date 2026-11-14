@@ -24,6 +24,7 @@ apps/customer_app/test/booking_models_test.dart
 docs/PHASE8.md
 
 UPDATED FILES
+apps/api/test/auth.e2e-spec.ts                        (+ public route public/salons/:id/booking-policy in the default-deny list)
 apps/api/src/app.module.ts                              (+ BookingModule)
 apps/api/src/common/tenancy/tenant-db.service.ts        (+ withCustomer)
 apps/api/src/common/tenancy/tenant-db.service.spec.ts   (+ withCustomer tests)

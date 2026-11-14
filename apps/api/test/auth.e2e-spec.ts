@@ -469,7 +469,7 @@ d('Phase 2: authentication & authorization (real PostgreSQL)', () => {
         // Phase 3: approved-salon read endpoints (RLS only exposes APPROVED salons to public-read transactions)
         'public/salons/', 'public/salons/:id',
         // Phase 4: customer-facing catalogue of an approved salon
-        'public/salons/:id/catalog',
+        'public/salons/:id/booking-policy', 'public/salons/:id/catalog',
         // Phase 5: token-in-body invitation preview and accept (single-use, hashed, rate limited)
         'public/staff-invitations/accept', 'public/staff-invitations/preview',
         // Phase 7: customer discovery (read-only; APPROVED and currently listed salons only)
