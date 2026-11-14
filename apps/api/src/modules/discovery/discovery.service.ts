@@ -12,12 +12,15 @@ import { SALON_TYPES } from '../salons/salon.types';
 import { formatHm } from '../salons/opening-hours';
 import { likePattern, Tx } from '../salons/salons.repository';
 import { AvailabilityQuery, DiscoverySearchQuery, UpdateDiscoverySettingsDto } from './dto/discovery.dto';
+import { AbsBusy, BOOKING_POLICY_DEFAULTS, BookingPolicy, dayStartMs, nextAvailableBooked, openStarts, withinWindow } from '../booking/booking.types';
 import { DiscoveryRepository, SearchParams, SearchRow } from './discovery.repository';
 import {
-  DISCOVERY_LIMITS, DISCOVERY_SORTS, DiscoverySort, StaffWeek, WeekSpans, addDaysIso, boundingBox, distanceKm, freeSpans, isIsoDateText, karachiMinute,
-  nextAvailable, notBeforeToday, parseClock, slotStarts, sumMoney,
+  DISCOVERY_LIMITS, DISCOVERY_SORTS, DiscoverySort, StaffWeek, WeekSpans, addDaysIso, boundingBox, distanceKm, isIsoDateText, karachiMinute,
+  notBeforeToday, parseClock, sumMoney,
 } from './discovery.types';
 
+/** Hard upper bound of any booking window (matches the CHECK on salon_booking_policies.advance_days). */
+const BOOKING_ABSOLUTE_MAX_DAYS = 60;
 const bad = (message: string) => new AppException('VALIDATION_FAILED', message, 400);
 const notFound = (what: string) => new AppException('NOT_FOUND', `${what} not found.`, 404);
 
@@ -129,11 +132,16 @@ export class DiscoveryService {
       const covers = await this.repo.coverKeys(tx, ids);
       const hours = await this.repo.hoursForSalons(tx, ids);
       const weeks = await this.repo.staffWeeks(tx, staffIds, today, addDaysIso(today, DISCOVERY_LIMITS.horizonDays));
+      // Phase 8: the card's "next available" now subtracts real appointments, the buffer and the minimum notice.
+      const policies = await this.repo.policies(tx, ids);
+      const busy = await this.repo.busyByStaff(tx, staffIds, dayStartMs(today), dayStartMs(addDaysIso(today, DISCOVERY_LIMITS.horizonDays)));
       rows = rows.slice();
-      return { rows, total, covers, hours, weeks };
+      return { rows, total, covers, hours, weeks, policies, busy };
     });
 
-    const items = await Promise.all(data.rows.map((r) => this.card(r, data.covers.get(r.id), data.hours.get(r.id) ?? {}, data.weeks, today, nowMinute)));
+    const items = await Promise.all(
+      data.rows.map((r) => this.card(r, data.covers.get(r.id), data.hours.get(r.id) ?? {}, data.weeks, data.busy, data.policies.get(r.id) ?? BOOKING_POLICY_DEFAULTS, now.getTime())),
+    );
     return {
       items,
       total: data.total,
@@ -147,7 +155,10 @@ export class DiscoveryService {
     };
   }
 
-  private async card(r: SearchRow, coverKey: string | undefined, hours: WeekSpans, weeks: Map<string, StaffWeek & { salonId: string }>, today: string, nowMinute: number) {
+  private async card(
+    r: SearchRow, coverKey: string | undefined, hours: WeekSpans, weeks: Map<string, StaffWeek & { salonId: string }>,
+    busy: ReadonlyMap<string, ReadonlyArray<AbsBusy>>, policy: BookingPolicy, nowMs: number,
+  ) {
     let coverUrl: string | null = null;
     if (coverKey) {
       try {
@@ -172,8 +183,8 @@ export class DiscoveryService {
       priceFrom: r.priceFrom,
       priceTo: r.priceTo,
       serviceCount: r.serviceCount,
-      /** Preview from working hours, breaks and leave. Bookings do not exist yet (Phase 8 subtracts them). */
-      nextAvailable: nextAvailable(hours, staff, r.minDuration, today, nowMinute),
+      /** From working hours, breaks, leave AND existing bookings (Phase 8), with the salon's buffer and minimum notice. Still not a promise. */
+      nextAvailable: nextAvailableBooked(hours, staff, busy, policy, r.minDuration, nowMs),
     };
   }
 
@@ -181,22 +192,24 @@ export class DiscoveryService {
   async availability(salonId: string, q: AvailabilityQuery) {
     const now = this.clock.now();
     const today = this.listing.today(now);
-    const nowMinute = karachiMinute(now);
     if (!isIsoDateText(q.date)) throw bad('date must be a real calendar date (YYYY-MM-DD).');
-    if (q.date < today || q.date > addDaysIso(today, DISCOVERY_LIMITS.horizonDays - 1)) {
-      throw bad(`date must be between today and ${DISCOVERY_LIMITS.horizonDays - 1} days from today.`);
-    }
+    // Cheap global bounds first; the salon's own booking window (policy.advanceDays) is applied once the policy is loaded.
+    if (!withinWindow(q.date, today, BOOKING_ABSOLUTE_MAX_DAYS)) throw bad(`date must be between today and ${DISCOVERY_LIMITS.horizonDays - 1} days from today.`);
 
     const data = await this.tenant.withPublicRead(async (tx: Tx) => {
       const p = await this.listing.params(tx);
       if (!(await this.repo.salonListed(tx, salonId, p.trialDays, p.today))) throw notFound('Salon');
+      const policy = (await this.repo.policies(tx, [salonId])).get(salonId) ?? BOOKING_POLICY_DEFAULTS;
+      if (!withinWindow(q.date, today, policy.advanceDays)) throw bad(`date must be between today and ${policy.advanceDays - 1} days from today.`);
       const rows = await this.repo.serviceStaff(tx, salonId, q.serviceIds);
       const found = new Set(rows.map((r) => r.serviceId));
       if (q.serviceIds.some((id) => !found.has(id))) throw notFound('Service');
       const staffIds = [...new Set(rows.map((r) => r.staffId))];
       const hours = (await this.repo.hoursForSalons(tx, [salonId])).get(salonId) ?? {};
-      const weeks = await this.repo.staffWeeks(tx, staffIds, today, addDaysIso(today, DISCOVERY_LIMITS.horizonDays));
-      return { rows, hours, weeks };
+      const weeks = await this.repo.staffWeeks(tx, staffIds, today, addDaysIso(today, policy.advanceDays));
+      const base = dayStartMs(q.date);
+      const busy = await this.repo.busyByStaff(tx, staffIds, base - 86_400_000, base + 2 * 86_400_000);
+      return { rows, hours, weeks, policy, busy };
     });
 
     const services = new Map<string, { id: string; name: string; durationMinutes: number }>();
@@ -212,11 +225,12 @@ export class DiscoveryService {
       if (eligible.length === 0) throw notFound('Staff member');
     }
 
-    const notBefore = q.date === today ? notBeforeToday(nowMinute) : 0;
     const staff = eligible
       .map(([staffId, rs]) => {
         const week = data.weeks.get(staffId);
-        const starts = week ? slotStarts(freeSpans(q.date, data.hours, week), duration, DISCOVERY_LIMITS.slotStepMinutes, notBefore) : [];
+        const starts = week
+          ? openStarts({ date: q.date, salon: data.hours, staff: week, busy: data.busy.get(staffId) ?? [], policy: data.policy, durationMin: duration, nowMs: now.getTime() })
+          : [];
         return {
           staffId,
           name: rs[0].staffName,
@@ -235,7 +249,7 @@ export class DiscoveryService {
       services: [...services.values()],
       /** Sorted by price, lowest first: the price comparison between staff. */
       staff,
-      /** A preview is not a booking: only the booking itself (Phase 8) confirms a time. */
+      /** Free times now include existing bookings, the buffer and the minimum notice, but a list is still not a booking: only POST /bookings confirms a time. */
       preview: true,
     };
   }

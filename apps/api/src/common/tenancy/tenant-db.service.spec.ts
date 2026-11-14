@@ -64,3 +64,23 @@ describe('TenantDb.withPublicRead', () => {
   });
 });
 
+
+describe('TenantDb.withCustomer', () => {
+  it('sets the user, no salon, no admin, and opens the public read context for this transaction only', async () => {
+    const { calls, prisma } = fakePrisma();
+    await new TenantDb(prisma as never).withCustomer(USER, async () => 1);
+    expect(calls).toHaveLength(4);
+    expect(calls.every((c) => c.sql.includes('set_config(') && c.sql.includes(', true)'))).toBe(true);
+    expect(calls.map((c) => c.values[0])).toEqual([USER]);
+    const sql = calls.map((c) => c.sql).join('\n');
+    expect(sql).toContain("'app.salon_id', ''");
+    expect(sql).toContain("'app.is_platform_admin', 'false'");
+    expect(sql).toContain("'app.public_read', 'true'");
+  });
+
+  it('fails closed on a malformed user id without touching the database', async () => {
+    const { calls, prisma } = fakePrisma();
+    await expect(new TenantDb(prisma as never).withCustomer("x'; DROP TABLE users;--", async () => 1)).rejects.toThrow(/userId/);
+    expect(calls).toHaveLength(0);
+  });
+});

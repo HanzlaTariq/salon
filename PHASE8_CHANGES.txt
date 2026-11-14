@@ -1,0 +1,40 @@
+PHASE 8 - Appointment booking engine
+Extract this ZIP over your project folder (same paths). Then follow docs/PHASE8.md.
+
+NEW FILES
+apps/api/prisma/schema/booking.prisma
+apps/api/prisma/schema/migrations/20261115000000_booking_phase8/migration.sql
+apps/api/src/modules/booking/booking.types.ts
+apps/api/src/modules/booking/booking.types.spec.ts
+apps/api/src/modules/booking/booking.repository.ts
+apps/api/src/modules/booking/booking.views.ts
+apps/api/src/modules/booking/customer-booking.service.ts
+apps/api/src/modules/booking/salon-booking.service.ts
+apps/api/src/modules/booking/booking.controllers.ts
+apps/api/src/modules/booking/booking.module.ts
+apps/api/src/modules/booking/dto/booking.dto.ts
+apps/api/test/booking.e2e-spec.ts
+apps/customer_app/lib/booking/booking_models.dart
+apps/customer_app/lib/booking/booking_api.dart
+apps/customer_app/lib/booking/confirm_booking_screen.dart
+apps/customer_app/lib/booking/my_bookings_screen.dart
+apps/customer_app/lib/booking/booking_detail_screen.dart
+apps/customer_app/lib/booking/reschedule_screen.dart
+apps/customer_app/test/booking_models_test.dart
+docs/PHASE8.md
+
+UPDATED FILES
+apps/api/src/app.module.ts                              (+ BookingModule)
+apps/api/src/common/tenancy/tenant-db.service.ts        (+ withCustomer)
+apps/api/src/common/tenancy/tenant-db.service.spec.ts   (+ withCustomer tests)
+apps/api/src/modules/discovery/discovery.repository.ts  (+ policies(), busyByStaff())
+apps/api/src/modules/discovery/discovery.service.ts     (availability + cards subtract bookings, buffer, notice, window)
+apps/api/src/modules/discovery/discovery.module.ts      (exports DiscoveryRepository)
+apps/customer_app/lib/discovery/discovery_api.dart      (availability: optional staffId)
+apps/customer_app/lib/discovery/availability_screen.dart (tap a time -> confirm booking)
+apps/customer_app/lib/discovery/salon_profile_screen.dart (passes BookingApi)
+apps/customer_app/lib/discovery/discovery_home_screen.dart (My bookings button)
+docs/security/risk-register.md                          (+ R62-R72)
+
+NOT EXECUTED HERE (R62): no PostgreSQL, node_modules or Flutter SDK. Only the pure slot engine was compiled and run.
+Run: npx prisma migrate deploy; npm run build; npm test; npm run test:e2e; flutter analyze; flutter test.

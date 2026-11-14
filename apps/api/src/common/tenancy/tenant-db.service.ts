@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { TenantContext, assertValidContext } from './tenant-context';
+import { TenantContext, assertValidContext, isUuid } from './tenant-context';
 
 /** Minimal transaction surface we rely on (keeps this testable without a database). */
 export interface TenantTx {
@@ -42,6 +42,25 @@ export class TenantDb {
     return this.prisma.$transaction(async (tx: any) => {
       const t = tx as TenantTx;
       await t.$queryRaw`SELECT set_config('app.user_id', '', true)`;
+      await t.$queryRaw`SELECT set_config('app.salon_id', '', true)`;
+      await t.$queryRaw`SELECT set_config('app.is_platform_admin', 'false', true)`;
+      await t.$queryRaw`SELECT set_config('app.public_read', 'true', true)`;
+      return fn(tx);
+    });
+  }
+
+  /**
+   * Phase 8: a signed-in CUSTOMER. The user id is set (their own appointments match `customer_user_id`), no salon and no admin
+   * flag, AND the public read context is opened so the booking transaction can read approved salons, services, staff,
+   * hours and the time span of busy slots. Writes still need a policy that names this customer, so the public context
+   * grants no write. Because the public context can also see other customers' active time spans, every customer query
+   * must filter `customer_user_id` explicitly (see BookingRepository).
+   */
+  async withCustomer<T>(userId: string, fn: (tx: any) => Promise<T>): Promise<T> {
+    if (!isUuid(userId)) throw new Error('userId must be a UUID');
+    return this.prisma.$transaction(async (tx: any) => {
+      const t = tx as TenantTx;
+      await t.$queryRaw`SELECT set_config('app.user_id', ${userId}, true)`;
       await t.$queryRaw`SELECT set_config('app.salon_id', '', true)`;
       await t.$queryRaw`SELECT set_config('app.is_platform_admin', 'false', true)`;
       await t.$queryRaw`SELECT set_config('app.public_read', 'true', true)`;

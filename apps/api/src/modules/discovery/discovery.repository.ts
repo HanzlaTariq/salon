@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DISCOVERY_SETTING_KEY } from '../listing/listing';
 import { Tx } from '../salons/salons.repository';
+import { ACTIVE_STATUSES, AbsBusy, BookingPolicy, policyFromRow } from '../booking/booking.types';
 import { BoundingBox, DiscoverySort, Span, StaffWeek, WeekSpans, moneyOrNull } from './discovery.types';
 
 type Row = Record<string, any>;
@@ -246,6 +247,41 @@ export class DiscoveryRepository {
       serviceId: x.service_id, serviceName: x.service_name, durationMinutes: Number(x.duration_minutes), staffId: x.staff_id,
       staffName: x.staff_name, price: moneyOrNull(x.price),
     }));
+  }
+
+  // ------------------------------------------------------------------ Phase 8: booking policy and busy time
+  /** Booking rules per salon (defaults for salons that never saved a policy). Readable in the public context. */
+  async policies(tx: Tx, salonIds: string[]): Promise<Map<string, BookingPolicy>> {
+    const out = new Map<string, BookingPolicy>();
+    if (salonIds.length === 0) return out;
+    const r = await tx.$queryRaw<Row[]>`SELECT * FROM salon_booking_policies WHERE salon_id = ANY(${salonIds}::uuid[])`;
+    for (const id of salonIds) out.set(id, policyFromRow(r.find((x) => x.salon_id === id)));
+    return out;
+  }
+
+  /**
+   * Busy time (appointment start .. blocked_until, buffer included) of the given staff in [fromMs, toMs). ONLY the staff id
+   * and the two instants are selected: no customer, price or service data ever leaves this query. `excludeId` leaves one
+   * appointment out (a customer moving their own booking must not collide with its old slot).
+   */
+  async busyByStaff(tx: Tx, staffIds: string[], fromMs: number, toMs: number, excludeId: string | null = null): Promise<Map<string, AbsBusy[]>> {
+    const out = new Map<string, AbsBusy[]>();
+    if (staffIds.length === 0) return out;
+    const active = [...ACTIVE_STATUSES] as string[];
+    const from = new Date(fromMs);
+    const to = new Date(toMs);
+    const r = await tx.$queryRaw<Row[]>`
+      SELECT staff_id, (extract(epoch FROM starts_at) * 1000)::float8 AS start_ms, (extract(epoch FROM blocked_until) * 1000)::float8 AS end_ms
+      FROM appointments
+      WHERE staff_id = ANY(${staffIds}::uuid[]) AND status::text = ANY(${active}::text[])
+        AND starts_at < ${to}::timestamptz AND blocked_until > ${from}::timestamptz
+        AND (${excludeId}::uuid IS NULL OR id <> ${excludeId}::uuid)`;
+    for (const x of r) {
+      const list = out.get(x.staff_id) ?? [];
+      list.push({ startMs: Number(x.start_ms), endMs: Number(x.end_ms) });
+      out.set(x.staff_id, list);
+    }
+    return out;
   }
 
   // ------------------------------------------------------------------ settings (Super Admin)

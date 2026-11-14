@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_core/flutter_core.dart';
 
+import '../booking/booking_api.dart';
+import '../booking/booking_models.dart';
+import '../booking/confirm_booking_screen.dart';
 import 'discovery_api.dart';
 import 'discovery_models.dart';
 import 'format.dart';
 
 /// For the chosen services: which staff can do ALL of them, what each one charges in total (cheapest first) and
-/// their free start times on the chosen day. This is a PREVIEW, not a booking: booking arrives in the next phase.
+/// their free start times on the chosen day. Tapping a time opens the confirmation step; only the server's answer to the
+/// booking request confirms a time (someone else may take it first, then the list is refreshed).
 class AvailabilityScreen extends StatefulWidget {
-  const AvailabilityScreen({super.key, required this.api, required this.salonId, required this.salonName, required this.services});
+  const AvailabilityScreen({super.key, required this.api, required this.bookingApi, required this.salonId, required this.salonName, required this.services});
 
   final DiscoveryApi api;
+  final BookingApi bookingApi;
   final String salonId;
   final String salonName;
   final List<CatalogService> services;
@@ -37,6 +42,34 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
       _dayIndex = i;
       _load = _fetch();
     });
+  }
+
+  Future<void> _book(AvailabilityResult r, StaffAvailability staff, String time) async {
+    final booking = await Navigator.push<Booking>(
+      context,
+      MaterialPageRoute<Booking>(
+        builder: (_) => ConfirmBookingScreen(
+          api: widget.bookingApi,
+          salonId: widget.salonId,
+          salonName: widget.salonName,
+          staffId: staff.staffId,
+          staffName: staff.name,
+          date: r.date,
+          time: time,
+          serviceIds: widget.services.map((s) => s.id).toList(),
+          serviceNames: widget.services.map((s) => s.name).toList(),
+          durationMinutes: r.durationMinutes,
+          totalPrice: staff.totalPrice,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (booking == null) {
+      setState(() => _load = _fetch()); // the time may have been taken: show the truth
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booked! Find it under My bookings.')));
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
@@ -87,10 +120,10 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
               return ListView(padding: const EdgeInsets.all(AppSpacing.lg), children: [
                 Text('Total time: ${formatDuration(r.durationMinutes)}', style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.mutedText)),
                 const SizedBox(height: AppSpacing.md),
-                for (final s in r.staff) _StaffCard(staff: s),
+                for (final s in r.staff) _StaffCard(staff: s, onPick: (t) => _book(r, s, t)),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  'Times are a preview based on working hours and leave. Booking opens in the next update; a time is only confirmed when you book it.',
+                  'Free times include other bookings. A time is only yours once the booking is confirmed.',
                   style: theme.textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
                 ),
               ]);
@@ -103,8 +136,9 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
 }
 
 class _StaffCard extends StatelessWidget {
-  const _StaffCard({required this.staff});
+  const _StaffCard({required this.staff, required this.onPick});
   final StaffAvailability staff;
+  final void Function(String time) onPick;
 
   @override
   Widget build(BuildContext context) {
@@ -123,12 +157,7 @@ class _StaffCard extends StatelessWidget {
             Text('No free time on this day', style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.mutedText))
           else
             Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: [
-              for (final t in staff.slots)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                  decoration: BoxDecoration(border: Border.all(color: theme.colorScheme.outline), borderRadius: BorderRadius.circular(AppRadius.input)),
-                  child: Text(formatClock(t), style: theme.textTheme.labelLarge),
-                ),
+              for (final t in staff.slots) ActionChip(label: Text(formatClock(t)), onPressed: () => onPick(t)),
             ]),
         ]),
       ),

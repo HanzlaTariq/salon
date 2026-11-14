@@ -1,0 +1,95 @@
+// Phase 8: appointment booking engine.
+// Hand-written SQL in migrations/20261115000000_booking_phase8 is the source of truth for CHECK constraints, the
+// double-booking EXCLUDE constraint (staff + tstzrange), the status state machine, RLS policies and grants. These models
+// mirror the columns for typed access; all Phase 8 queries are parameterized $queryRaw in booking.repository.ts.
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  DELAYED
+
+  @@map("appointment_status")
+}
+
+/// Optional per-salon rules. No row = the platform defaults in booking.types.ts.
+model SalonBookingPolicy {
+  salonId                 String   @id @map("salon_id") @db.Uuid
+  bufferMinutes           Int      @default(0) @map("buffer_minutes") @db.SmallInt
+  minNoticeMinutes        Int      @default(30) @map("min_notice_minutes")
+  advanceDays             Int      @default(14) @map("advance_days") @db.SmallInt
+  cancelCutoffMinutes     Int      @default(120) @map("cancel_cutoff_minutes")
+  rescheduleCutoffMinutes Int      @default(120) @map("reschedule_cutoff_minutes")
+  maxReschedules          Int      @default(2) @map("max_reschedules") @db.SmallInt
+  updatedBy               String?  @map("updated_by") @db.Uuid
+  updatedAt               DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("salon_booking_policies")
+}
+
+/// startsAt..endsAt = the service; endsAt..blockedUntil = the salon's buffer. Price, duration and names are snapshots.
+model Appointment {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId              String            @map("salon_id") @db.Uuid
+  customerUserId       String            @map("customer_user_id") @db.Uuid
+  staffId              String            @map("staff_id") @db.Uuid
+  status               AppointmentStatus @default(CONFIRMED)
+  source               String            @default("ONLINE") @db.VarChar(10)
+  startsAt             DateTime          @map("starts_at") @db.Timestamptz(6)
+  endsAt               DateTime          @map("ends_at") @db.Timestamptz(6)
+  bufferMinutes        Int               @default(0) @map("buffer_minutes") @db.SmallInt
+  blockedUntil         DateTime          @map("blocked_until") @db.Timestamptz(6)
+  totalDurationMinutes Int               @map("total_duration_minutes")
+  totalPrice           Decimal           @map("total_price") @db.Decimal(12, 2)
+  salonName            String            @map("salon_name") @db.VarChar(120)
+  staffName            String            @map("staff_name") @db.VarChar(80)
+  customerNote         String?           @map("customer_note") @db.VarChar(300)
+  rescheduleCount      Int               @default(0) @map("reschedule_count") @db.SmallInt
+  cancelledAt          DateTime?         @map("cancelled_at") @db.Timestamptz(6)
+  cancelledBy          String?           @map("cancelled_by") @db.Uuid
+  /// CUSTOMER | SALON (CHECK).
+  cancelledByRole      String?           @map("cancelled_by_role") @db.VarChar(10)
+  cancellationReason   String?           @map("cancellation_reason") @db.VarChar(300)
+  idempotencyKey       String?           @map("idempotency_key") @db.VarChar(64)
+  requestFingerprint   String?           @map("request_fingerprint") @db.Char(64)
+  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("appointments")
+}
+
+model AppointmentService {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId         String   @map("salon_id") @db.Uuid
+  appointmentId   String   @map("appointment_id") @db.Uuid
+  serviceId       String   @map("service_id") @db.Uuid
+  position        Int      @db.SmallInt
+  serviceName     String   @map("service_name") @db.VarChar(100)
+  durationMinutes Int      @map("duration_minutes")
+  price           Decimal  @db.Decimal(10, 2)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("appointment_services")
+}
+
+/// Append-only (trigger + revoked UPDATE/DELETE).
+model AppointmentStatusHistory {
+  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId       String             @map("salon_id") @db.Uuid
+  appointmentId String             @map("appointment_id") @db.Uuid
+  /// CREATED | RESCHEDULED | CANCELLED | STATUS_CHANGED (CHECK).
+  event         String             @db.VarChar(16)
+  fromStatus    AppointmentStatus? @map("from_status")
+  toStatus      AppointmentStatus  @map("to_status")
+  actorUserId   String             @map("actor_user_id") @db.Uuid
+  actorRole     String             @map("actor_role") @db.VarChar(14)
+  reason        String?            @db.VarChar(300)
+  oldStartsAt   DateTime?          @map("old_starts_at") @db.Timestamptz(6)
+  newStartsAt   DateTime?          @map("new_starts_at") @db.Timestamptz(6)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("appointment_status_history")
+}

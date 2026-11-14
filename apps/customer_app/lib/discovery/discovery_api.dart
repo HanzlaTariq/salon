@@ -27,8 +27,13 @@ class DiscoveryApi {
 
   Future<List<CatalogCategory>> catalog(String id) async => parseCatalog(await _get('/public/salons/$id/catalog'));
 
-  Future<AvailabilityResult> availability({required String salonId, required String date, required List<String> serviceIds}) async =>
-      AvailabilityResult.fromJson(await _get('/public/discovery/salons/$salonId/availability', {'date': date, 'serviceIds': serviceIds.join(',')}));
+  /// [staffId] limits the answer to one staff member (booking flow A, and moving an existing booking).
+  Future<AvailabilityResult> availability({required String salonId, required String date, required List<String> serviceIds, String? staffId}) async =>
+      AvailabilityResult.fromJson(await _get('/public/discovery/salons/$salonId/availability', {
+        'date': date,
+        'serviceIds': serviceIds.join(','),
+        if (staffId != null) 'staffId': staffId,
+      }));
 
   Future<Map<String, dynamic>> _get(String path, [Map<String, String>? query]) async {
     final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: query == null || query.isEmpty ? null : query);

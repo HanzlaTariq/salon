@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_core/flutter_core.dart';
 
+import '../booking/booking_api.dart';
 import 'availability_screen.dart';
 import 'discovery_api.dart';
 import 'discovery_models.dart';
@@ -13,9 +14,10 @@ const _maxSelected = 10;
 /// Salon profile: photos, hours, services with the exact price of every staff member (price comparison) and a
 /// selection of services to check times for.
 class SalonProfileScreen extends StatefulWidget {
-  const SalonProfileScreen({super.key, required this.api, required this.card});
+  const SalonProfileScreen({super.key, required this.api, required this.bookingApi, required this.card});
 
   final DiscoveryApi api;
+  final BookingApi bookingApi;
   final SalonCard card;
 
   @override
@@ -85,7 +87,7 @@ class _SalonProfileScreenState extends State<SalonProfileScreen> {
   void _openAvailability(SalonProfile profile) {
     Navigator.push(
       context,
-      MaterialPageRoute<void>(builder: (_) => AvailabilityScreen(api: widget.api, salonId: profile.id, salonName: profile.name, services: _selected.values.toList())),
+      MaterialPageRoute<void>(builder: (_) => AvailabilityScreen(api: widget.api, bookingApi: widget.bookingApi, salonId: profile.id, salonName: profile.name, services: _selected.values.toList())),
     );
   }
 }

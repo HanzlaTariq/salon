@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_core/flutter_core.dart';
 
+import '../booking/booking_api.dart';
+import '../booking/my_bookings_screen.dart';
 import 'discovery_api.dart';
 import 'discovery_controller.dart';
 import 'discovery_filters.dart';
@@ -26,6 +28,7 @@ class DiscoveryHomeScreen extends StatefulWidget {
 
 class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
   late final DiscoveryController _c = DiscoveryController(api: widget.api, location: widget.location ?? GeolocatorLocationService());
+  late final BookingApi _booking = BookingApi(repository: widget.repository);
   final _scroll = ScrollController();
   final _search = TextEditingController();
   Timer? _debounce;
@@ -88,7 +91,14 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Find a salon'),
-            actions: [IconButton(tooltip: 'Sign out', icon: const Icon(Icons.logout), onPressed: widget.repository.logout)],
+            actions: [
+              IconButton(
+                tooltip: 'My bookings',
+                icon: const Icon(Icons.event_note_outlined),
+                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => MyBookingsScreen(api: _booking, discovery: widget.api))),
+              ),
+              IconButton(tooltip: 'Sign out', icon: const Icon(Icons.logout), onPressed: widget.repository.logout),
+            ],
           ),
           body: Column(children: [
             Padding(
@@ -163,7 +173,7 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
           final salon = _c.items[i];
           return SalonCardTile(
             salon: salon,
-            onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SalonProfileScreen(api: widget.api, card: salon))),
+            onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SalonProfileScreen(api: widget.api, bookingApi: _booking, card: salon))),
           );
         },
       ),

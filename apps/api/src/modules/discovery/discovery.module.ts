@@ -9,5 +9,7 @@ import { DiscoveryService } from './discovery.service';
   imports: [ListingModule],
   controllers: [PublicDiscoveryController, AdminDiscoveryController],
   providers: [DiscoveryRepository, DiscoveryService],
+  /** Phase 8: the booking module reuses the availability reads (hours, staff weeks, busy time, policies). */
+  exports: [DiscoveryRepository],
 })
 export class DiscoveryModule {}
