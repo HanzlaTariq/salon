@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_core/flutter_core.dart';
 
+import '../queue/queue_api.dart';
+import '../queue/queue_screen.dart';
 import 'team_api.dart';
 import 'team_models.dart';
 
 /// Staff dashboard (SALON_STAFF). Shows ONLY the signed-in person's own hours, breaks and leave.
 /// Breaks and leave requests are enabled when the owner granted `schedule.manage_own`.
 class StaffHome extends StatefulWidget {
-  const StaffHome({super.key, required this.repository, required this.api});
+  const StaffHome({super.key, required this.repository, required this.api, required this.queueApi});
 
   final AuthRepository repository;
   final TeamApi api;
+  final QueueApi queueApi;
 
   @override
   State<StaffHome> createState() => _StaffHomeState();
@@ -89,6 +92,14 @@ class _StaffHomeState extends State<StaffHome> {
                               padding: const EdgeInsets.only(top: AppSpacing.sm),
                               child: Text('Your salon is not active right now.', style: const TextStyle(color: AppColors.danger)),
                             ),
+                          if (me.salonStatus == 'APPROVED') ...[
+                            const SizedBox(height: AppSpacing.lg),
+                            FilledButton.icon(
+                              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => QueueScreen(api: widget.queueApi, owner: false))),
+                              icon: const Icon(Icons.format_list_numbered),
+                              label: const Text("Today's queue"),
+                            ),
+                          ],
                           const SizedBox(height: AppSpacing.xl),
                           Text('Weekly hours', style: style.titleMedium),
                           for (final h in me.workingHours)

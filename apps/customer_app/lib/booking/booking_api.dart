@@ -53,6 +53,18 @@ class BookingApi {
   Future<Booking> reschedule(String id, {required String date, required String time}) async =>
       Booking.fromJson(await _data('POST', '/bookings/$id/reschedule', {'date': date, 'time': time}));
 
+  /// "I'm on my way" (minutes optional) or "I'll be late" (minutes required): the ETA is "arriving in N minutes".
+  Future<Booking> reportArrival(String id, {required bool late, int? etaMinutes}) async =>
+      Booking.fromJson(await _data('POST', '/bookings/$id/arrival', {'state': late ? 'RUNNING_LATE' : 'ON_THE_WAY', if (etaMinutes != null) 'etaMinutes': etaMinutes}));
+
+  /// Come earlier. Moves the booking only if the server still finds the time free; `etaMinutes` = "I am coming in N minutes".
+  Future<Booking> acceptEarlyOffer(String id, {required String offerId, int? etaMinutes}) async =>
+      Booking.fromJson(await _data('POST', '/bookings/$id/early-offer/accept', {'offerId': offerId, if (etaMinutes != null) 'etaMinutes': etaMinutes}));
+
+  /// Keep my time: no penalty, nothing changes.
+  Future<Booking> declineEarlyOffer(String id, {required String offerId}) async =>
+      Booking.fromJson(await _data('POST', '/bookings/$id/early-offer/decline', {'offerId': offerId}));
+
   Future<Map<String, dynamic>> _data(String method, String path, [Map<String, dynamic>? body, Map<String, String>? query, Map<String, String> headers = const {}]) async {
     final res = await repository.authorized((token) => _raw(method, path, body, query, {...headers, 'Authorization': 'Bearer $token'}));
     final decoded = res.body.isEmpty ? null : jsonDecode(res.body);

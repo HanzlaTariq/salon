@@ -9,6 +9,7 @@ import { addDaysIso, isIsoDateText, parseClock, sumMoney } from '../discovery/di
 import { ListingPolicy } from '../listing/listing';
 import { Tx } from '../salons/salons.repository';
 import { BookingRepository } from './booking.repository';
+import { QueueRepository } from './queue.repository';
 import {
   BOOKING_LIMITS, IDEMPOTENCY_KEY_RE, bookingFingerprint, canStartAt, cancelDecision, dayStartMs, rescheduleDecision, slotMs, withinWindow,
 } from './booking.types';
@@ -37,6 +38,7 @@ export class CustomerBookingService {
   constructor(
     private readonly tenant: TenantDb,
     private readonly repo: BookingRepository,
+    private readonly queue: QueueRepository,
     private readonly discovery: DiscoveryRepository,
     private readonly listing: ListingPolicy,
     private readonly clock: Clock,
@@ -140,7 +142,8 @@ export class CustomerBookingService {
       const lines = (await this.repo.linesFor(tx, [a.id])).get(a.id) ?? [];
       const history = await this.repo.historyFor(tx, a.id);
       const { policy } = await this.repo.getPolicy(tx, a.salonId);
-      return customerView(a, lines, policy, nowMs, history);
+      const offer = (await this.queue.pendingOffers(tx, [a.id])).get(a.id) ?? null;
+      return customerView(a, lines, policy, nowMs, history, offer);
     });
   }
 
@@ -153,7 +156,8 @@ export class CustomerBookingService {
       const res = await this.repo.listForCustomer(tx, user.id, { scope, now, limit: pageSize, offset: (page - 1) * pageSize });
       const lines = await this.repo.linesFor(tx, res.items.map((a) => a.id));
       const policies = await this.discovery.policies(tx, [...new Set(res.items.map((a) => a.salonId))]);
-      const items = res.items.map((a) => customerView(a, lines.get(a.id) ?? [], policies.get(a.salonId) as never, now.getTime()));
+      const offers = await this.queue.pendingOffers(tx, res.items.map((a) => a.id));
+      const items = res.items.map((a) => customerView(a, lines.get(a.id) ?? [], policies.get(a.salonId) as never, now.getTime(), undefined, offers.get(a.id) ?? null));
       return { items, total: res.total, page, pageSize, hasMore: (page - 1) * pageSize + items.length < res.total, scope };
     });
   }

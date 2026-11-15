@@ -110,13 +110,14 @@ export class SalonBookingService {
   }
 
   async updatePolicy(user: AuthenticatedUser, dto: UpdateBookingPolicyDto, meta: ClientContext) {
-    const next: BookingPolicy = {
-      bufferMinutes: dto.bufferMinutes, minNoticeMinutes: dto.minNoticeMinutes, advanceDays: dto.advanceDays,
-      cancelCutoffMinutes: dto.cancelCutoffMinutes, rescheduleCutoffMinutes: dto.rescheduleCutoffMinutes, maxReschedules: dto.maxReschedules,
-    };
     return this.ownerScoped(user, true, async (tx, salon, now) => {
       if (!PROFILE_EDITABLE.includes(salon.status)) throw conflict(`The booking policy cannot be changed while the salon is ${salon.status.toLowerCase()}.`);
       const before = (await this.repo.getPolicy(tx, salon.id)).policy;
+      const next: BookingPolicy = {
+        bufferMinutes: dto.bufferMinutes, minNoticeMinutes: dto.minNoticeMinutes, advanceDays: dto.advanceDays,
+        cancelCutoffMinutes: dto.cancelCutoffMinutes, rescheduleCutoffMinutes: dto.rescheduleCutoffMinutes, maxReschedules: dto.maxReschedules,
+        noShowGraceMinutes: dto.noShowGraceMinutes ?? before.noShowGraceMinutes,
+      };
       await this.repo.upsertPolicy(tx, salon.id, next, user.id, now);
       await insertAudit(tx, {
         actorUserId: user.id, actorRole: user.role, action: 'booking.policy_updated', targetType: 'salon', targetId: salon.id, salonId: salon.id,

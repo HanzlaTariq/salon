@@ -36,6 +36,10 @@ export class FakeClock extends Clock {
   advance(ms: number): void {
     this.t += ms;
   }
+  /** Phase 9: jump to an absolute instant (also backwards), so every test can start from the real "now" and then move into a working day. */
+  set(ms: number): void {
+    this.t = ms;
+  }
 }
 
 export interface Harness {

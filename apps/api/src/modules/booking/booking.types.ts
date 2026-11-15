@@ -43,6 +43,8 @@ export interface BookingPolicy {
   rescheduleCutoffMinutes: number;
   /** How many times a customer may move one appointment (0 = never). */
   maxReschedules: number;
+  /** Phase 9: how long the salon waits after the appointment time (or the customer's own ETA) before staff may mark a no-show. */
+  noShowGraceMinutes: number;
 }
 
 export const BOOKING_POLICY_DEFAULTS: Readonly<BookingPolicy> = {
@@ -52,6 +54,7 @@ export const BOOKING_POLICY_DEFAULTS: Readonly<BookingPolicy> = {
   cancelCutoffMinutes: 120,
   rescheduleCutoffMinutes: 120,
   maxReschedules: 2,
+  noShowGraceMinutes: 15,
 };
 
 export const BOOKING_POLICY_RANGES = {
@@ -61,6 +64,7 @@ export const BOOKING_POLICY_RANGES = {
   cancelCutoffMinutes: { min: 0, max: 10_080 },
   rescheduleCutoffMinutes: { min: 0, max: 10_080 },
   maxReschedules: { min: 0, max: 5 },
+  noShowGraceMinutes: { min: 5, max: 120, step: 5 },
 } as const;
 
 /** Statuses that occupy the staff member's time (must match the WHERE of the exclusion constraint). */
@@ -83,6 +87,12 @@ export function policyFromRow(row: Record<string, unknown> | null | undefined): 
     cancelCutoffMinutes: pick('cancelCutoffMinutes', 'cancel_cutoff_minutes'),
     rescheduleCutoffMinutes: pick('rescheduleCutoffMinutes', 'reschedule_cutoff_minutes'),
     maxReschedules: pick('maxReschedules', 'max_reschedules'),
+    // The database also requires a multiple of 5; an invalid stored value falls back to the default.
+    noShowGraceMinutes: (() => {
+      const v = row ? Number(row['no_show_grace_minutes']) : NaN;
+      const r = BOOKING_POLICY_RANGES.noShowGraceMinutes;
+      return Number.isInteger(v) && v >= r.min && v <= r.max && v % r.step === 0 ? v : BOOKING_POLICY_DEFAULTS.noShowGraceMinutes;
+    })(),
   };
 }
 

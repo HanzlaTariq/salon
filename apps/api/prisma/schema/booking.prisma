@@ -24,6 +24,8 @@ model SalonBookingPolicy {
   cancelCutoffMinutes     Int      @default(120) @map("cancel_cutoff_minutes")
   rescheduleCutoffMinutes Int      @default(120) @map("reschedule_cutoff_minutes")
   maxReschedules          Int      @default(2) @map("max_reschedules") @db.SmallInt
+  /// Phase 9: grace before staff may mark a no-show (5..120, multiple of 5; CHECK).
+  noShowGraceMinutes      Int      @default(15) @map("no_show_grace_minutes") @db.SmallInt
   updatedBy               String?  @map("updated_by") @db.Uuid
   updatedAt               DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
@@ -34,9 +36,13 @@ model SalonBookingPolicy {
 model Appointment {
   id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   salonId              String            @map("salon_id") @db.Uuid
-  customerUserId       String            @map("customer_user_id") @db.Uuid
+  /// NULL for a walk-in (CHECK appointments_party_consistent).
+  customerUserId       String?           @map("customer_user_id") @db.Uuid
+  walkInName           String?           @map("walk_in_name") @db.VarChar(80)
+  walkInPhone          String?           @map("walk_in_phone") @db.VarChar(16)
   staffId              String            @map("staff_id") @db.Uuid
   status               AppointmentStatus @default(CONFIRMED)
+  /// ONLINE | WALK_IN (CHECK).
   source               String            @default("ONLINE") @db.VarChar(10)
   startsAt             DateTime          @map("starts_at") @db.Timestamptz(6)
   endsAt               DateTime          @map("ends_at") @db.Timestamptz(6)
@@ -55,6 +61,18 @@ model Appointment {
   cancellationReason   String?           @map("cancellation_reason") @db.VarChar(300)
   idempotencyKey       String?           @map("idempotency_key") @db.VarChar(64)
   requestFingerprint   String?           @map("request_fingerprint") @db.Char(64)
+  /// Phase 9 progress (the real moments, not the booked ones).
+  startedAt            DateTime?         @map("started_at") @db.Timestamptz(6)
+  completedAt          DateTime?         @map("completed_at") @db.Timestamptz(6)
+  noShowAt             DateTime?         @map("no_show_at") @db.Timestamptz(6)
+  /// The salon's forecast when the day runs late. startsAt (the booked time) never changes without the customer's consent.
+  estimatedStartsAt    DateTime?         @map("estimated_starts_at") @db.Timestamptz(6)
+  etaUpdatedAt         DateTime?         @map("eta_updated_at") @db.Timestamptz(6)
+  /// The customer's own report: NONE | ON_THE_WAY | RUNNING_LATE (CHECK). Only the customer writes these (trigger).
+  arrivalState         String            @default("NONE") @map("arrival_state") @db.VarChar(12)
+  customerEtaAt        DateTime?         @map("customer_eta_at") @db.Timestamptz(6)
+  arrivalUpdatedAt     DateTime?         @map("arrival_updated_at") @db.Timestamptz(6)
+  arrivalUpdates       Int               @default(0) @map("arrival_updates") @db.SmallInt
   createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
 
@@ -80,7 +98,7 @@ model AppointmentStatusHistory {
   id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   salonId       String             @map("salon_id") @db.Uuid
   appointmentId String             @map("appointment_id") @db.Uuid
-  /// CREATED | RESCHEDULED | CANCELLED | STATUS_CHANGED (CHECK).
+  /// CREATED | RESCHEDULED | CANCELLED | STATUS_CHANGED | STARTED | COMPLETED | NO_SHOW | ETA_CHANGED | ARRIVAL_UPDATE | EARLY_* (CHECK).
   event         String             @db.VarChar(16)
   fromStatus    AppointmentStatus? @map("from_status")
   toStatus      AppointmentStatus  @map("to_status")
@@ -92,4 +110,21 @@ model AppointmentStatusHistory {
   createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("appointment_status_history")
+}
+
+/// "Your stylist is free earlier": a question to the customer. Nothing moves until the customer accepts (trigger-enforced).
+model AppointmentEarlyOffer {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId            String    @map("salon_id") @db.Uuid
+  appointmentId      String    @map("appointment_id") @db.Uuid
+  offeredBy          String    @map("offered_by") @db.Uuid
+  offeredStart       DateTime  @map("offered_start") @db.Timestamptz(6)
+  expiresAt          DateTime  @map("expires_at") @db.Timestamptz(6)
+  /// PENDING | ACCEPTED | DECLINED | EXPIRED | WITHDRAWN (CHECK). One PENDING offer per appointment (partial unique index).
+  status             String    @default("PENDING") @db.VarChar(10)
+  respondedAt        DateTime? @map("responded_at") @db.Timestamptz(6)
+  customerEtaMinutes Int?      @map("customer_eta_minutes") @db.SmallInt
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("appointment_early_offers")
 }

@@ -8,6 +8,7 @@ const safe = () => Matches(SAFE_TEXT, { message: '$property contains characters 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;
 const BUFFERS = Array.from({ length: BOOKING_POLICY_RANGES.bufferMinutes.max / 5 + 1 }, (_, i) => i * 5);
+const GRACES = Array.from({ length: (BOOKING_POLICY_RANGES.noShowGraceMinutes.max - BOOKING_POLICY_RANGES.noShowGraceMinutes.min) / 5 + 1 }, (_, i) => BOOKING_POLICY_RANGES.noShowGraceMinutes.min + i * 5);
 export const BOOKING_STATUS_FILTER = ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'DELAYED'] as const;
 
 /** POST /bookings. Price, duration and names are NEVER accepted: the server derives them. */
@@ -51,7 +52,7 @@ export class SalonBookingsQuery {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) pageSize?: number;
 }
 
-/** PUT /salons/mine/booking-policy: all six rules, always. */
+/** PUT /salons/mine/booking-policy: the six Phase 8 rules, always. `noShowGraceMinutes` (Phase 9) is optional: when it is left out the stored value stays. */
 export class UpdateBookingPolicyDto {
   @IsInt() @IsIn(BUFFERS) bufferMinutes!: number;
   @IsInt() @Min(BOOKING_POLICY_RANGES.minNoticeMinutes.min) @Max(BOOKING_POLICY_RANGES.minNoticeMinutes.max) minNoticeMinutes!: number;
@@ -59,4 +60,5 @@ export class UpdateBookingPolicyDto {
   @IsInt() @Min(BOOKING_POLICY_RANGES.cancelCutoffMinutes.min) @Max(BOOKING_POLICY_RANGES.cancelCutoffMinutes.max) cancelCutoffMinutes!: number;
   @IsInt() @Min(BOOKING_POLICY_RANGES.rescheduleCutoffMinutes.min) @Max(BOOKING_POLICY_RANGES.rescheduleCutoffMinutes.max) rescheduleCutoffMinutes!: number;
   @IsInt() @Min(BOOKING_POLICY_RANGES.maxReschedules.min) @Max(BOOKING_POLICY_RANGES.maxReschedules.max) maxReschedules!: number;
+  @IsOptional() @IsInt() @IsIn(GRACES) noShowGraceMinutes?: number;
 }

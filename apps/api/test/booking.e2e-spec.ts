@@ -511,7 +511,8 @@ d('Phase 8: booking engine - slots, double booking, policy, cancel, reschedule, 
     expect(rows[0].staff_id).toBe(m.staff.Ali);
     const lines = await asApp({ user: staffUser.id, salon: m.salonId }, async (cl) => (await cl.query('SELECT appointment_id FROM appointment_services')).rowCount);
     expect(lines).toBe(1);
-    await expect(asApp({ user: staffUser.id, salon: m.salonId }, (cl) => cl.query(`UPDATE appointments SET status = 'CANCELLED'`))).resolves.toBeDefined();
+    // Phase 9: staff may update progress of their own appointments, but never cancel: the guard trigger refuses it (it used to match 0 rows).
+    await expect(asApp({ user: staffUser.id, salon: m.salonId }, (cl) => cl.query(`UPDATE appointments SET status = 'CANCELLED'`))).rejects.toThrow();
     expect((await aq(`SELECT count(*)::int AS n FROM appointments WHERE salon_id = $1 AND status = 'CANCELLED'`, [m.salonId])).rows[0].n).toBe(0);
   });
 });

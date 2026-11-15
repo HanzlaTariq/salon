@@ -1,0 +1,51 @@
+PHASE 9 CHANGES: staff queue and appointment workflow
+Extract this zip over your project folder (same paths). Then:
+  cd apps/api
+  npx prisma validate
+  npx prisma migrate deploy
+  npm test
+  npm run test:e2e
+  (Flutter, both apps) flutter pub get ; flutter analyze ; flutter test
+Read docs/PHASE9.md first. Do NOT call Phase 9 production-ready until the checks above pass on your machine (risk R73).
+
+NEW
+  apps/api/prisma/schema/migrations/20261116000000_queue_phase9/migration.sql
+  apps/api/src/modules/booking/queue.types.ts
+  apps/api/src/modules/booking/queue.types.spec.ts
+  apps/api/src/modules/booking/queue.repository.ts
+  apps/api/src/modules/booking/queue.service.ts
+  apps/api/src/modules/booking/queue.views.ts
+  apps/api/src/modules/booking/queue.controllers.ts
+  apps/api/src/modules/booking/customer-live.service.ts
+  apps/api/src/modules/booking/dto/queue.dto.ts
+  apps/api/test/queue.e2e-spec.ts
+  apps/business_app/lib/queue/queue_models.dart
+  apps/business_app/lib/queue/queue_api.dart
+  apps/business_app/lib/queue/queue_screen.dart
+  apps/business_app/lib/queue/walk_in_screen.dart
+  apps/business_app/test/queue_models_test.dart
+  apps/customer_app/lib/booking/live_status.dart
+  apps/customer_app/test/live_models_test.dart
+  docs/PHASE9.md
+  PHASE9_CHANGES.txt
+
+UPDATED
+  apps/api/prisma/schema/booking.prisma                     (new columns, AppointmentEarlyOffer model; customerUserId optional)
+  apps/api/src/modules/booking/booking.module.ts            (registers the Phase 9 controllers and services)
+  apps/api/src/modules/booking/booking.repository.ts        (new columns, LEFT JOIN so walk-ins show in calendars, new history events, policy column)
+  apps/api/src/modules/booking/booking.types.ts             (noShowGraceMinutes in the policy)
+  apps/api/src/modules/booking/booking.views.ts             (estimate, customerEta, earlyOffer, progress, walkIn)
+  apps/api/src/modules/booking/customer-booking.service.ts  (passes the open early offer to the customer view)
+  apps/api/src/modules/booking/salon-booking.service.ts     (policy update keeps the grace period when it is left out)
+  apps/api/src/modules/booking/dto/booking.dto.ts           (optional noShowGraceMinutes)
+  apps/api/test/booking.e2e-spec.ts                         (one Phase 8 RLS assertion: a staff cancel is now REFUSED by the trigger instead of matching 0 rows)
+  apps/api/test/support/harness.ts                          (FakeClock.set)
+  apps/business_app/lib/main.dart                           (QueueApi)
+  apps/business_app/lib/salon/salon_home.dart               (button "Live queue and walk-ins")
+  apps/business_app/lib/team/staff_home.dart                (button "Today's queue")
+  apps/customer_app/lib/booking/booking_models.dart         (EtaEstimate, CustomerEta, EarlyOffer, delayMessage)
+  apps/customer_app/lib/booking/booking_api.dart            (arrival, accept / decline early offer)
+  apps/customer_app/lib/booking/booking_detail_screen.dart  (live status card, 20 s refresh)
+  docs/security/risk-register.md                            (R62 / R71 updated, R73 to R88 added)
+
+NO new npm / pub packages, NO new environment variables.

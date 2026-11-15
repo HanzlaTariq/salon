@@ -10,7 +10,8 @@ const dateOrNull = (v: unknown): Date | null => (v === null || v === undefined ?
 export interface AppointmentRecord {
   id: string;
   salonId: string;
-  customerUserId: string;
+  /** NULL for a walk-in (Phase 9): the person has no app account. */
+  customerUserId: string | null;
   staffId: string;
   status: string;
   source: string;
@@ -30,7 +31,17 @@ export interface AppointmentRecord {
   idempotencyKey: string | null;
   requestFingerprint: string | null;
   createdAt: Date;
-  /** Only filled by queries that join the customer (owner view: name and phone; staff view: name only). */
+  /** Phase 9: progress, the salon's estimate and the customer's own arrival report (see queue.types.ts for the three kinds of time). */
+  startedAt: Date | null;
+  completedAt: Date | null;
+  noShowAt: Date | null;
+  estimatedStartsAt: Date | null;
+  etaUpdatedAt: Date | null;
+  arrivalState: 'NONE' | 'ON_THE_WAY' | 'RUNNING_LATE';
+  customerEtaAt: Date | null;
+  arrivalUpdatedAt: Date | null;
+  arrivalUpdates: number;
+  /** Only filled by queries that join the customer (owner view: name and phone; staff view: name only). Walk-ins use their own name / phone. */
   customerName: string | null;
   customerPhone: string | null;
 }
@@ -85,7 +96,9 @@ export interface NewAppointment {
 export interface NewHistory {
   salonId: string;
   appointmentId: string;
-  event: 'CREATED' | 'RESCHEDULED' | 'CANCELLED' | 'STATUS_CHANGED';
+  event:
+    | 'CREATED' | 'RESCHEDULED' | 'CANCELLED' | 'STATUS_CHANGED'
+    | 'STARTED' | 'COMPLETED' | 'NO_SHOW' | 'ETA_CHANGED' | 'ARRIVAL_UPDATE' | 'EARLY_OFFERED' | 'EARLY_ACCEPTED' | 'EARLY_DECLINED' | 'EARLY_WITHDRAWN';
   fromStatus: string | null;
   toStatus: string;
   actorUserId: string;
@@ -102,8 +115,15 @@ const appointment = (r: Row): AppointmentRecord => ({
   customerNote: r.customer_note ?? null, rescheduleCount: Number(r.reschedule_count), cancelledAt: dateOrNull(r.cancelled_at),
   cancelledByRole: r.cancelled_by_role ?? null, cancellationReason: r.cancellation_reason ?? null, idempotencyKey: r.idempotency_key ?? null,
   requestFingerprint: r.request_fingerprint ?? null, createdAt: date(r.created_at),
+  startedAt: dateOrNull(r.started_at), completedAt: dateOrNull(r.completed_at), noShowAt: dateOrNull(r.no_show_at),
+  estimatedStartsAt: dateOrNull(r.estimated_starts_at), etaUpdatedAt: dateOrNull(r.eta_updated_at),
+  arrivalState: (r.arrival_state ?? 'NONE') as AppointmentRecord['arrivalState'], customerEtaAt: dateOrNull(r.customer_eta_at),
+  arrivalUpdatedAt: dateOrNull(r.arrival_updated_at), arrivalUpdates: Number(r.arrival_updates ?? 0),
   customerName: r.customer_name ?? null, customerPhone: r.customer_phone ?? null,
 });
+
+/** Exported so the queue repository maps rows exactly like the booking repository does. */
+export const mapAppointment = appointment;
 
 /** The statuses that hold a staff member's time, as a SQL-bindable array (the exclusion constraint uses the same list). */
 const ACTIVE = [...ACTIVE_STATUSES] as string[];
@@ -143,13 +163,13 @@ export class BookingRepository {
   async upsertPolicy(tx: Tx, salonId: string, p: BookingPolicy, userId: string, now: Date): Promise<void> {
     await tx.$executeRaw`
       INSERT INTO salon_booking_policies (salon_id, buffer_minutes, min_notice_minutes, advance_days, cancel_cutoff_minutes,
-                                          reschedule_cutoff_minutes, max_reschedules, updated_by, updated_at)
+                                          reschedule_cutoff_minutes, max_reschedules, no_show_grace_minutes, updated_by, updated_at)
       VALUES (${salonId}::uuid, ${p.bufferMinutes}::smallint, ${p.minNoticeMinutes}::int, ${p.advanceDays}::smallint, ${p.cancelCutoffMinutes}::int,
-              ${p.rescheduleCutoffMinutes}::int, ${p.maxReschedules}::smallint, ${userId}::uuid, ${now}::timestamptz)
+              ${p.rescheduleCutoffMinutes}::int, ${p.maxReschedules}::smallint, ${p.noShowGraceMinutes}::smallint, ${userId}::uuid, ${now}::timestamptz)
       ON CONFLICT (salon_id) DO UPDATE SET buffer_minutes = EXCLUDED.buffer_minutes, min_notice_minutes = EXCLUDED.min_notice_minutes,
         advance_days = EXCLUDED.advance_days, cancel_cutoff_minutes = EXCLUDED.cancel_cutoff_minutes,
         reschedule_cutoff_minutes = EXCLUDED.reschedule_cutoff_minutes, max_reschedules = EXCLUDED.max_reschedules,
-        updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at`;
+        no_show_grace_minutes = EXCLUDED.no_show_grace_minutes, updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at`;
   }
 
   /**
@@ -270,8 +290,9 @@ export class BookingRepository {
   /** One appointment of a salon, with the customer's name (and phone only when `includePhone`). */
   async findForSalon(tx: Tx, salonId: string, id: string, includePhone: boolean, staffId: string | null): Promise<AppointmentRecord | null> {
     const r = await tx.$queryRaw<Row[]>`
-      SELECT a.*, u.full_name AS customer_name, CASE WHEN ${includePhone}::boolean THEN u.phone END AS customer_phone
-      FROM appointments a JOIN users u ON u.id = a.customer_user_id
+      SELECT a.*, COALESCE(u.full_name, a.walk_in_name) AS customer_name,
+             CASE WHEN ${includePhone}::boolean THEN COALESCE(u.phone, a.walk_in_phone) END AS customer_phone
+      FROM appointments a LEFT JOIN users u ON u.id = a.customer_user_id
       WHERE a.id = ${id}::uuid AND a.salon_id = ${salonId}::uuid AND (${staffId}::uuid IS NULL OR a.staff_id = ${staffId}::uuid)`;
     return r[0] ? appointment(r[0]) : null;
   }
@@ -281,9 +302,10 @@ export class BookingRepository {
     f: { from: Date; to: Date; staffId: string | null; status: string | null; includePhone: boolean; limit: number; offset: number },
   ): Promise<{ items: AppointmentRecord[]; total: number }> {
     const r = await tx.$queryRaw<Row[]>`
-      SELECT a.*, u.full_name AS customer_name, CASE WHEN ${f.includePhone}::boolean THEN u.phone END AS customer_phone,
+      SELECT a.*, COALESCE(u.full_name, a.walk_in_name) AS customer_name,
+             CASE WHEN ${f.includePhone}::boolean THEN COALESCE(u.phone, a.walk_in_phone) END AS customer_phone,
              count(*) OVER ()::int AS total
-      FROM appointments a JOIN users u ON u.id = a.customer_user_id
+      FROM appointments a LEFT JOIN users u ON u.id = a.customer_user_id
       WHERE a.salon_id = ${salonId}::uuid AND a.starts_at >= ${f.from}::timestamptz AND a.starts_at < ${f.to}::timestamptz
         AND (${f.staffId}::uuid IS NULL OR a.staff_id = ${f.staffId}::uuid)
         AND (${f.status}::text IS NULL OR a.status::text = ${f.status}::text)

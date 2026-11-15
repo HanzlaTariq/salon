@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_core/flutter_core.dart';
 
@@ -6,6 +8,7 @@ import '../discovery/format.dart';
 import 'booking_api.dart';
 import 'booking_models.dart';
 import 'confirm_booking_screen.dart';
+import 'live_status.dart';
 import 'reschedule_screen.dart';
 
 /// One booking: what was booked, the price on record, and Cancel / Reschedule when the salon's policy allows it.
@@ -24,6 +27,51 @@ class BookingDetailScreen extends StatefulWidget {
 class _BookingDetailScreenState extends State<BookingDetailScreen> {
   late Future<Booking> _load = widget.api.get(widget.bookingId);
   bool _busy = false;
+  Booking? _last;
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    // Live status: while the booking is open the screen refreshes itself (the salon's estimate changes with the day).
+    _poll = Timer.periodic(const Duration(seconds: 20), (_) => _refreshQuietly());
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshQuietly() async {
+    final last = _last;
+    if (!mounted || _busy || last == null || !last.isOpen) return;
+    try {
+      final fresh = await widget.api.get(widget.bookingId);
+      if (mounted && !_busy) setState(() => _load = Future.value(fresh));
+    } on ApiException {
+      // A failed background refresh is not worth interrupting the person; the next one tries again.
+    }
+  }
+
+  /// Runs one live action and shows the server's answer; on a refusal the message is shown and the screen reloads.
+  Future<void> _live(Future<Booking> Function() action, String done) async {
+    setState(() => _busy = true);
+    try {
+      final updated = await action();
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _load = Future.value(updated);
+      });
+      _snack(done);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _snack(e.message);
+      _reload();
+    }
+  }
 
   void _reload() => setState(() => _load = widget.api.get(widget.bookingId));
 
@@ -91,12 +139,22 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             return ErrorView(message: e is ApiException ? e.message : 'Could not load this booking.', requestId: e is ApiException ? e.requestId : null, onRetry: _reload);
           }
           final b = snap.data!;
+          _last = b;
           final day = DateTime.tryParse('${b.date}T00:00:00Z');
           return ListView(padding: const EdgeInsets.all(AppSpacing.lg), children: [
             Row(children: [Expanded(child: Text(b.salonName, style: theme.textTheme.titleLarge)), statusChip(context, b)]),
             const SizedBox(height: AppSpacing.sm),
             Text('${day == null ? b.date : formatDay(day)}, ${formatClock(b.time)} to ${formatClock(b.endTime)}', style: theme.textTheme.titleSmall),
             Text('With ${b.staffName}', style: theme.textTheme.bodyMedium),
+            if (b.isOpen)
+              LiveStatusCard(
+                booking: b,
+                busy: _busy,
+                onArrival: ({required bool late, int? etaMinutes}) =>
+                    _live(() => widget.api.reportArrival(b.id, late: late, etaMinutes: etaMinutes), 'The salon has been told.'),
+                onAccept: (offer, eta) => _live(() => widget.api.acceptEarlyOffer(b.id, offerId: offer.id, etaMinutes: eta), 'Your booking was moved earlier.'),
+                onDecline: (offer) => _live(() => widget.api.declineEarlyOffer(b.id, offerId: offer.id), 'No problem, your time stays the same.'),
+              ),
             const SizedBox(height: AppSpacing.lg),
             Card(
               child: Padding(

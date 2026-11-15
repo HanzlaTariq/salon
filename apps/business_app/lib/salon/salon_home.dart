@@ -1,3 +1,5 @@
+import '../queue/queue_api.dart';
+import '../queue/queue_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_core/flutter_core.dart';
 import 'package:image_picker/image_picker.dart';
@@ -14,12 +16,13 @@ import 'salon_models.dart';
 
 /// Owner home for Phase 3: register the salon, upload documents/photos, submit, and follow the review status.
 class SalonHome extends StatefulWidget {
-  const SalonHome({super.key, required this.repository, required this.api, required this.catalogApi, required this.teamApi, required this.billingApi});
+  const SalonHome({super.key, required this.repository, required this.api, required this.catalogApi, required this.teamApi, required this.billingApi, required this.queueApi});
 
   final AuthRepository repository;
   final SalonApi api;
   final CatalogApi catalogApi;
   final TeamApi teamApi;
+  final QueueApi queueApi;
   final BillingApi billingApi;
 
   @override
@@ -213,6 +216,14 @@ class _SalonHomeState extends State<SalonHome> {
                     icon: const Icon(Icons.groups_outlined),
                     label: const Text('Team and schedules'),
                   ),
+                  if (o.salon.status == 'APPROVED') ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => QueueScreen(api: widget.queueApi, owner: true))),
+                      icon: const Icon(Icons.format_list_numbered),
+                      label: const Text('Live queue and walk-ins'),
+                    ),
+                  ],
                   if (o.salon.status == 'APPROVED' || o.salon.status == 'SUSPENDED') ...[
                     const SizedBox(height: AppSpacing.sm),
                     OutlinedButton.icon(
