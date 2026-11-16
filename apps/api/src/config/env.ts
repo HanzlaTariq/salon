@@ -81,6 +81,17 @@ const schema = z.object({
   UPLOAD_MAX_BYTES: z.coerce.number().int().min(100_000).max(10_485_760).default(5_242_880),
   /** Lifetime of signed download URLs. Keep short. */
   SIGNED_URL_TTL_SEC: z.coerce.number().int().min(30).max(3600).default(300),
+
+  // ---- Phase 10: notifications ----
+  /** `log` keeps messages in memory (development / tests only, refused in production). `fcm` sends through Firebase Cloud Messaging. */
+  PUSH_DRIVER: z.enum(['log', 'fcm']).default('log'),
+  /** BACKEND ONLY. base64 of the Firebase service-account JSON (Firebase console > Project settings > Service accounts). */
+  FCM_SERVICE_ACCOUNT_B64: z.string().min(40).optional(),
+  /** Runs the notification worker loop inside this process (never in NODE_ENV=test). Turn off when a cron calls the tick endpoint instead. */
+  NOTIFICATIONS_WORKER_ENABLED: bool('true'),
+  NOTIFICATIONS_TICK_SECONDS: z.coerce.number().int().min(5).max(300).default(15),
+  /** Enables POST /internal/notifications/tick for a cron service (serverless hosting). At least 32 characters; unset = endpoint disabled. */
+  NOTIFICATIONS_CRON_SECRET: z.string().min(32, 'NOTIFICATIONS_CRON_SECRET must be at least 32 characters').optional(),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -113,6 +124,8 @@ export function parseEnv(raw: NodeJS.ProcessEnv = process.env): Env {
     if (env.STORAGE_DRIVER !== 'supabase') problems.push('STORAGE_DRIVER: must be supabase in production');
     if (env.SUPABASE_URL && !env.SUPABASE_URL.startsWith('https://')) problems.push('SUPABASE_URL: must use https:// in production');
   }
+  if (env.PUSH_DRIVER === 'fcm' && !env.FCM_SERVICE_ACCOUNT_B64) problems.push('FCM_SERVICE_ACCOUNT_B64: required when PUSH_DRIVER=fcm');
+  if (env.NODE_ENV === 'production' && env.PUSH_DRIVER !== 'fcm') problems.push('PUSH_DRIVER: must be fcm in production');
   if (env.MAIL_TRANSPORT === 'smtp' && !env.SMTP_HOST) problems.push('SMTP_HOST: required when MAIL_TRANSPORT=smtp');
   if (problems.length > 0) throw new Error(`Invalid environment configuration:\n  - ${problems.join('\n  - ')}`);
   return env;

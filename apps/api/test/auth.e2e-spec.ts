@@ -474,6 +474,8 @@ d('Phase 2: authentication & authorization (real PostgreSQL)', () => {
         'public/staff-invitations/accept', 'public/staff-invitations/preview',
         // Phase 7: customer discovery (read-only; APPROVED and currently listed salons only)
         'public/discovery/options', 'public/discovery/salons', 'public/discovery/salons/:id/availability',
+        // Phase 10: cron entry point of the notification worker (404 unless NOTIFICATIONS_CRON_SECRET is set; constant-time secret check; no input)
+        'internal/notifications/tick',
       ].sort());
     });
 

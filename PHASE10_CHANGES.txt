@@ -1,0 +1,57 @@
+PHASE 10: NOTIFICATIONS. Extract this zip over the project root (same paths). Only NEW and UPDATED files.
+
+NEW
+  apps/api/prisma/schema/migrations/20261117000000_notifications_phase10/migration.sql
+  apps/api/prisma/schema/notifications.prisma
+  apps/api/src/modules/notifications/notification.types.ts
+  apps/api/src/modules/notifications/notification.templates.ts
+  apps/api/src/modules/notifications/notification.repository.ts
+  apps/api/src/modules/notifications/notification.planner.ts
+  apps/api/src/modules/notifications/notification.dispatcher.ts
+  apps/api/src/modules/notifications/notification.scheduler.ts
+  apps/api/src/modules/notifications/notification.service.ts
+  apps/api/src/modules/notifications/notification.controllers.ts
+  apps/api/src/modules/notifications/notifications.module.ts
+  apps/api/src/modules/notifications/push.provider.ts
+  apps/api/src/modules/notifications/dto/notification.dto.ts
+  apps/api/src/modules/notifications/notification.types.spec.ts
+  apps/api/src/modules/notifications/notification.templates.spec.ts
+  apps/api/src/modules/notifications/push.provider.spec.ts
+  apps/api/src/config/env.notifications.spec.ts
+  apps/api/test/notifications.e2e-spec.ts
+  packages/flutter_core/lib/src/notifications/notification_models.dart
+  packages/flutter_core/lib/src/notifications/notification_api.dart
+  packages/flutter_core/lib/src/notifications/push_messaging.dart
+  packages/flutter_core/lib/src/notifications/push_registrar.dart
+  packages/flutter_core/lib/src/notifications/notification_screens.dart
+  packages/flutter_core/lib/src/notifications/notifications.dart
+  packages/flutter_core/test/notification_models_test.dart
+  docs/PHASE10.md
+  PHASE10_CHANGES.txt
+
+UPDATED
+  apps/api/src/app.module.ts                          (+NotificationsModule)
+  apps/api/src/config/env.ts                          (+PUSH_DRIVER, FCM_SERVICE_ACCOUNT_B64, NOTIFICATIONS_*; production needs PUSH_DRIVER=fcm)
+  apps/api/src/common/tenancy/tenant-db.service.ts    (+withNotificationWorker)
+  apps/api/.env.example                               (+Phase 10 variables)
+  apps/api/src/config/env.spec.ts                     (production fixture: +PUSH_DRIVER=fcm, +FCM_SERVICE_ACCOUNT_B64)
+  apps/api/test/auth.e2e-spec.ts                      (public-route allowlist: +internal/notifications/tick)
+  packages/flutter_core/lib/flutter_core.dart         (+export notifications)
+  packages/flutter_core/pubspec.yaml                  (+firebase_core, firebase_messaging; version 0.3.0)
+  apps/customer_app/lib/discovery/discovery_home_screen.dart   (+notification bell, opens the booking)
+  apps/business_app/lib/salon/salon_home.dart         (+notification bell, opens the queue)
+  apps/business_app/lib/team/staff_home.dart          (+notification bell, opens the queue)
+  docs/security/risk-register.md                      (R69, R74, R75, R81 updated; R89 to R105 added)
+
+NOT CHANGED ON PURPOSE: booking, queue, billing, salons and staff services. Notifications come from database triggers.
+
+COMMANDS (PowerShell; CMD is the same)
+  cd apps\api
+  npm install
+  npx prisma migrate deploy
+  npx prisma validate
+  npm test
+  npm run test:e2e
+  cd ..\..\packages\flutter_core ; flutter pub get ; flutter test
+  cd ..\..\apps\customer_app ; flutter pub get ; flutter analyze
+  cd ..\business_app ; flutter pub get ; flutter analyze

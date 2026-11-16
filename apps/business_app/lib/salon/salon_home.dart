@@ -31,6 +31,14 @@ class SalonHome extends StatefulWidget {
 
 class _SalonHomeState extends State<SalonHome> {
   final _picker = ImagePicker();
+  late final NotificationApi _notifications = NotificationApi(repository: widget.repository);
+
+  /// A tap on a booking-related notification opens the live queue; other notices are already visible on this screen.
+  bool _openNotification(BuildContext context, AppNotification n) {
+    if (n.route != 'queue') return false;
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => QueueScreen(api: widget.queueApi, owner: true)));
+    return true;
+  }
   SalonOverview? _overview;
   bool _loading = true;
   bool _busy = false;
@@ -162,6 +170,7 @@ class _SalonHomeState extends State<SalonHome> {
       appBar: AppBar(
         title: const Text('My salon'),
         actions: [
+          NotificationBell(api: _notifications, app: 'BUSINESS', onOpen: _openNotification),
           IconButton(tooltip: 'Refresh', icon: const Icon(Icons.refresh), onPressed: _loading ? null : _load),
           IconButton(tooltip: 'Sign out', icon: const Icon(Icons.logout), onPressed: widget.repository.logout),
         ],

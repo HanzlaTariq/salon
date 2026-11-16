@@ -69,6 +69,23 @@ export class TenantDb {
   }
 
   /**
+   * Phase 10: the notification subsystem (worker loop, sweepers, device registration). It sets NO user and NO salon, only the worker
+   * flag that the Phase 10 policies check: read access to the facts needed to decide who is told, and write access to the
+   * outbox, history, deliveries and devices. Recipients are always derived from database rows, never from a request. Never use this
+   * for anything else.
+   */
+  async withNotificationWorker<T>(fn: (tx: any) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(async (tx: any) => {
+      const t = tx as TenantTx;
+      await t.$queryRaw`SELECT set_config('app.user_id', '', true)`;
+      await t.$queryRaw`SELECT set_config('app.salon_id', '', true)`;
+      await t.$queryRaw`SELECT set_config('app.is_platform_admin', 'false', true)`;
+      await t.$queryRaw`SELECT set_config('app.notification_worker', 'true', true)`;
+      return fn(tx);
+    });
+  }
+
+  /**
    * Access for an UNAUTHENTICATED holder of a staff invitation link (Phase 5). Only the invitation row
    * whose SHA-256 token hash equals `tokenHash` is visible (policy `invite_token_select`). The caller may
    * then bind the invitation's salon with `setTenantSalon` inside the same transaction. The hash is

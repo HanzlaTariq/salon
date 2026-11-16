@@ -17,6 +17,7 @@ import { CatalogModule } from './modules/catalog/catalog.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { BookingModule } from './modules/booking/booking.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SalonsModule } from './modules/salons/salons.module';
 import { StaffModule } from './modules/staff/staff.module';
 import { StorageModule } from './common/storage/storage.module';
@@ -74,6 +75,7 @@ const env = parseEnv();
     BillingModule,
     DiscoveryModule,
     BookingModule,
+    NotificationsModule,
     HealthModule,
   ],
   providers: [

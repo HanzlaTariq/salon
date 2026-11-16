@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_core/flutter_core.dart';
 
 import '../booking/booking_api.dart';
+import '../booking/booking_detail_screen.dart';
 import '../booking/my_bookings_screen.dart';
 import 'discovery_api.dart';
 import 'discovery_controller.dart';
@@ -29,6 +30,7 @@ class DiscoveryHomeScreen extends StatefulWidget {
 class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
   late final DiscoveryController _c = DiscoveryController(api: widget.api, location: widget.location ?? GeolocatorLocationService());
   late final BookingApi _booking = BookingApi(repository: widget.repository);
+  late final NotificationApi _notifications = NotificationApi(repository: widget.repository);
   final _scroll = ScrollController();
   final _search = TextEditingController();
   Timer? _debounce;
@@ -49,6 +51,14 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
     _search.dispose();
     _c.dispose();
     super.dispose();
+  }
+
+  /// A tap on a notification about a booking opens that booking.
+  bool _openNotification(BuildContext context, AppNotification n) {
+    final id = n.appointmentId;
+    if (n.route != 'booking' || id == null) return false;
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => BookingDetailScreen(api: _booking, discovery: widget.api, bookingId: id)));
+    return true;
   }
 
   void _onSearchChanged(String text) {
@@ -92,6 +102,7 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
           appBar: AppBar(
             title: const Text('Find a salon'),
             actions: [
+              NotificationBell(api: _notifications, app: 'CUSTOMER', onOpen: _openNotification),
               IconButton(
                 tooltip: 'My bookings',
                 icon: const Icon(Icons.event_note_outlined),

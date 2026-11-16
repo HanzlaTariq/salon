@@ -20,10 +20,18 @@ class StaffHome extends StatefulWidget {
 }
 
 class _StaffHomeState extends State<StaffHome> {
+  late final NotificationApi _notifications = NotificationApi(repository: widget.repository);
   StaffMe? _me;
   bool _loading = true;
   bool _busy = false;
   ApiException? _error;
+
+  /// A tap on a queue-related notification opens the live queue; schedule notices are already on this screen.
+  bool _openNotification(BuildContext context, AppNotification n) {
+    if (n.route != 'queue') return false;
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => QueueScreen(api: widget.queueApi, owner: false)));
+    return true;
+  }
 
   @override
   void initState() {
@@ -72,7 +80,10 @@ class _StaffHomeState extends State<StaffHome> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My schedule'),
-        actions: [IconButton(tooltip: 'Sign out', icon: const Icon(Icons.logout), onPressed: () => widget.repository.logout())],
+        actions: [
+          NotificationBell(api: _notifications, app: 'BUSINESS', onOpen: _openNotification),
+          IconButton(tooltip: 'Sign out', icon: const Icon(Icons.logout), onPressed: () => widget.repository.logout()),
+        ],
       ),
       body: _loading && me == null
           ? const LoadingView(label: 'Loading your schedule…')

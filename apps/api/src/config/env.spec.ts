@@ -18,6 +18,8 @@ const prod = {
   STORAGE_DRIVER: 'supabase',
   SUPABASE_URL: 'https://abcdefgh.supabase.co',
   SUPABASE_SERVICE_ROLE_KEY: 'k'.repeat(40),
+  PUSH_DRIVER: 'fcm',
+  FCM_SERVICE_ACCOUNT_B64: 'e'.repeat(60),
 };
 
 describe('parseEnv', () => {
