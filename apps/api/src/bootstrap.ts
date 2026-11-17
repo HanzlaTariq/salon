@@ -8,7 +8,8 @@ import { Env } from './config/env';
  * Shared by main.ts and e2e tests so tests exercise the REAL security configuration.
  */
 export function configureApp(app: INestApplication, env: Env): void {
-  app.setGlobalPrefix('api/v1');
+  // `s/:code` is the address printed in every QR code (Phase 11), so it lives at the site root, not under the API prefix.
+  app.setGlobalPrefix('api/v1', { exclude: ['s/:code'] });
 
   // Behind a load balancer req.ip is the proxy unless told how many hops to trust; rate limits,
   // lockout audit data and session IPs all depend on it.

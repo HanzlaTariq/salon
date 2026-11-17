@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import 'discovery_filters.dart';
 import 'discovery_models.dart';
+import 'qr_models.dart';
 
 /// Read-only client for the PUBLIC discovery endpoints (no sign-in needed, nothing is cached on disk).
 /// Errors use the same [ApiException] as the auth client, so screens show consistent messages.
@@ -22,6 +23,9 @@ class DiscoveryApi {
 
   Future<SearchPage> search(DiscoveryFilters filters, {int page = 1, int pageSize = 20}) async =>
       SearchPage.fromJson(await _get('/public/discovery/salons', filters.toQuery(page: page, pageSize: pageSize)));
+
+  /// Resolves a scanned or typed salon code. 404 = unknown, not approved, suspended or not listed (always the same answer).
+  Future<ScannedSalon> resolveCode(String code) async => ScannedSalon.fromJson(await _get('/public/qr/$code'));
 
   Future<SalonProfile> salon(String id) async => SalonProfile.fromJson(await _get('/public/salons/$id'));
 

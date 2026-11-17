@@ -1,0 +1,61 @@
+PHASE 11: SALON LINK, QR CODE AND PDF POSTER. Extract this zip over the project root (same paths). Only NEW and UPDATED files.
+
+NEW
+  apps/api/prisma/schema/migrations/20261118000000_qr_phase11/migration.sql
+  apps/api/prisma/schema/qr.prisma
+  apps/api/src/modules/qr/qr.types.ts
+  apps/api/src/modules/qr/qr.render.ts
+  apps/api/src/modules/qr/poster.ts
+  apps/api/src/modules/qr/landing.ts
+  apps/api/src/modules/qr/qr.repository.ts
+  apps/api/src/modules/qr/qr.service.ts
+  apps/api/src/modules/qr/qr.controllers.ts
+  apps/api/src/modules/qr/qr.module.ts
+  apps/api/src/modules/qr/dto/qr.dto.ts
+  apps/api/src/modules/qr/qr.types.spec.ts
+  apps/api/src/modules/qr/qr.render.spec.ts
+  apps/api/src/modules/qr/poster.spec.ts
+  apps/api/src/modules/qr/landing.spec.ts
+  apps/api/src/config/env.qr.spec.ts
+  apps/api/test/qr.e2e-spec.ts
+  apps/business_app/lib/qr/qr_models.dart
+  apps/business_app/lib/qr/qr_api.dart
+  apps/business_app/lib/qr/qr_screen.dart
+  apps/business_app/test/qr_models_test.dart
+  apps/customer_app/lib/discovery/qr_models.dart
+  apps/customer_app/lib/discovery/scan_salon_screen.dart
+  apps/customer_app/test/qr_models_test.dart
+  docs/PHASE11.md
+  PHASE11_CHANGES.txt
+
+UPDATED
+  apps/api/package.json, apps/api/package-lock.json      (+qrcode, pdfkit; dev: @types/qrcode, @types/pdfkit, jsqr)
+  apps/api/prisma/schema/salon.prisma                     (+qrCode relation, one line)
+  apps/api/src/app.module.ts                              (+QrModule)
+  apps/api/src/bootstrap.ts                               (s/:code excluded from the /api/v1 prefix)
+  apps/api/src/config/env.ts                              (+PUBLIC_LINK_BASE_URL, APP_STORE_URL_ANDROID/IOS, BRAND_NAME; production needs an https PUBLIC_LINK_BASE_URL)
+  apps/api/.env.example                                   (+Phase 11 variables)
+  apps/api/src/config/env.spec.ts                         (production fixture: +PUBLIC_LINK_BASE_URL)
+  apps/api/src/config/env.notifications.spec.ts           (production fixture: +PUBLIC_LINK_BASE_URL)
+  apps/api/test/auth.e2e-spec.ts                          (public-route allowlist: +public/qr/:code, s/:code)
+  apps/business_app/pubspec.yaml                          (+printing, share_plus)
+  apps/business_app/lib/salon/salon_home.dart             ("QR code and poster" button for approved salons)
+  apps/customer_app/pubspec.yaml                          (+mobile_scanner)
+  apps/customer_app/lib/discovery/discovery_api.dart      (+resolveCode)
+  apps/customer_app/lib/discovery/discovery_home_screen.dart  (+scan button in the top bar)
+  apps/customer_app/android/app/src/main/AndroidManifest.xml  (+CAMERA permission)
+  apps/customer_app/ios/Runner/Info.plist                 (+NSCameraUsageDescription)
+  docs/security/risk-register.md                          (R106 to R120 added)
+
+NOT CHANGED ON PURPOSE: booking, queue, billing, notifications, salon and staff services, admin-web.
+NOTE: pubspec.lock files are not included; flutter pub get regenerates them.
+
+COMMANDS (PowerShell; CMD is the same)
+  cd apps\api
+  npm install
+  npx prisma migrate deploy
+  npx prisma validate
+  npm test
+  npm run test:e2e
+  cd ..\customer_app ; flutter pub get ; flutter analyze ; flutter test
+  cd ..\business_app ; flutter pub get ; flutter analyze ; flutter test

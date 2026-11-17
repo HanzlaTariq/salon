@@ -14,6 +14,7 @@ import 'filters_sheet.dart';
 import 'location_service.dart';
 import 'salon_card.dart';
 import 'salon_profile_screen.dart';
+import 'scan_salon_screen.dart';
 
 /// Customer home: search by text, city/area, "Near me" (optional location) and filters, with paged results.
 class DiscoveryHomeScreen extends StatefulWidget {
@@ -103,6 +104,11 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
             title: const Text('Find a salon'),
             actions: [
               NotificationBell(api: _notifications, app: 'CUSTOMER', onOpen: _openNotification),
+              IconButton(
+                tooltip: 'Scan salon QR',
+                icon: const Icon(Icons.qr_code_scanner),
+                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ScanSalonScreen(api: widget.api, bookingApi: _booking))),
+              ),
               IconButton(
                 tooltip: 'My bookings',
                 icon: const Icon(Icons.event_note_outlined),

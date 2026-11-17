@@ -1,0 +1,14 @@
+// Phase 11: permanent salon link / QR code.
+// Hand-written SQL in migrations/20261118000000_qr_phase11 is the source of truth for the CHECK, trigger, RLS and grants.
+
+/// One permanent public code per approved salon. The QR code and poster encode <PUBLIC_LINK_BASE_URL>/s/<code>.
+model SalonQrCode {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId   String   @unique @map("salon_id") @db.Uuid
+  code      String   @unique @db.VarChar(10)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  salon Salon @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@map("salon_qr_codes")
+}

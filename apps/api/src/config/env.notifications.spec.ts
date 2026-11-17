@@ -19,6 +19,7 @@ const prod = {
   SUPABASE_SERVICE_ROLE_KEY: 'k'.repeat(40),
   PUSH_DRIVER: 'fcm',
   FCM_SERVICE_ACCOUNT_B64: 'e'.repeat(60),
+  PUBLIC_LINK_BASE_URL: 'https://book.example.com',
 } as NodeJS.ProcessEnv;
 
 describe('Phase 10 environment', () => {

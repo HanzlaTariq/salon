@@ -68,6 +68,8 @@ model Salon {
   categories    ServiceCategory[]
   services      Service[]
   staffServices StaffService[]
+  // Phase 11 (qr.prisma)
+  qrCode        SalonQrCode?
 
   @@index([status, createdAt])
   @@index([city, status])

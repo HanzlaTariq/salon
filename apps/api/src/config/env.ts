@@ -92,6 +92,15 @@ const schema = z.object({
   NOTIFICATIONS_TICK_SECONDS: z.coerce.number().int().min(5).max(300).default(15),
   /** Enables POST /internal/notifications/tick for a cron service (serverless hosting). At least 32 characters; unset = endpoint disabled. */
   NOTIFICATIONS_CRON_SECRET: z.string().min(32, 'NOTIFICATIONS_CRON_SECRET must be at least 32 characters').optional(),
+
+  // ---- Phase 11: salon link, QR code and poster ----
+  /** Public base URL printed into every QR code: <base>/s/<code>. Changing it later invalidates printed posters, so choose your final domain first. */
+  PUBLIC_LINK_BASE_URL: z.string().url().default('http://localhost:3000'),
+  /** Optional store links shown on the scan landing page. https only. */
+  APP_STORE_URL_ANDROID: z.string().url().startsWith('https://').optional(),
+  APP_STORE_URL_IOS: z.string().url().startsWith('https://').optional(),
+  /** Platform name printed on posters and the landing page. */
+  BRAND_NAME: z.string().trim().min(2).max(40).default('Salon Platform'),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -124,6 +133,7 @@ export function parseEnv(raw: NodeJS.ProcessEnv = process.env): Env {
     if (env.STORAGE_DRIVER !== 'supabase') problems.push('STORAGE_DRIVER: must be supabase in production');
     if (env.SUPABASE_URL && !env.SUPABASE_URL.startsWith('https://')) problems.push('SUPABASE_URL: must use https:// in production');
   }
+  if (env.NODE_ENV === 'production' && !env.PUBLIC_LINK_BASE_URL.startsWith('https://')) problems.push('PUBLIC_LINK_BASE_URL: must use https:// in production');
   if (env.PUSH_DRIVER === 'fcm' && !env.FCM_SERVICE_ACCOUNT_B64) problems.push('FCM_SERVICE_ACCOUNT_B64: required when PUSH_DRIVER=fcm');
   if (env.NODE_ENV === 'production' && env.PUSH_DRIVER !== 'fcm') problems.push('PUSH_DRIVER: must be fcm in production');
   if (env.MAIL_TRANSPORT === 'smtp' && !env.SMTP_HOST) problems.push('SMTP_HOST: required when MAIL_TRANSPORT=smtp');

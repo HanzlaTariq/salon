@@ -4,6 +4,8 @@
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Used only when you tap Near me, to show salons close to you. It is not stored.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Used only to scan a salon's QR code. Nothing is recorded or stored.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

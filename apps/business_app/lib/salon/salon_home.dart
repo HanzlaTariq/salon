@@ -1,3 +1,5 @@
+import '../qr/qr_api.dart';
+import '../qr/qr_screen.dart';
 import '../queue/queue_api.dart';
 import '../queue/queue_screen.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +34,7 @@ class SalonHome extends StatefulWidget {
 class _SalonHomeState extends State<SalonHome> {
   final _picker = ImagePicker();
   late final NotificationApi _notifications = NotificationApi(repository: widget.repository);
+  late final QrApi _qr = QrApi(repository: widget.repository);
 
   /// A tap on a booking-related notification opens the live queue; other notices are already visible on this screen.
   bool _openNotification(BuildContext context, AppNotification n) {
@@ -231,6 +234,14 @@ class _SalonHomeState extends State<SalonHome> {
                       onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => QueueScreen(api: widget.queueApi, owner: true))),
                       icon: const Icon(Icons.format_list_numbered),
                       label: const Text('Live queue and walk-ins'),
+                    ),
+                  ],
+                  if (o.salon.status == 'APPROVED') ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => QrScreen(api: _qr))),
+                      icon: const Icon(Icons.qr_code_2),
+                      label: const Text('QR code and poster'),
                     ),
                   ],
                   if (o.salon.status == 'APPROVED' || o.salon.status == 'SUSPENDED') ...[
