@@ -9,6 +9,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../billing/billing_api.dart';
 import '../billing/billing_screen.dart';
+import '../reports/reports_api.dart';
+import '../reports/reports_screen.dart';
 import '../catalog/catalog_api.dart';
 import '../catalog/catalog_screen.dart';
 import '../team/team_api.dart';
@@ -254,6 +256,12 @@ class _SalonHomeState extends State<SalonHome> {
                     ),
                   ],
                   if (o.salon.status == 'APPROVED' || o.salon.status == 'SUSPENDED') ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ReportsScreen(api: ReportsApi(repository: widget.repository)))),
+                      icon: const Icon(Icons.insights_outlined),
+                      label: const Text('Reports and expenses'),
+                    ),
                     const SizedBox(height: AppSpacing.sm),
                     OutlinedButton.icon(
                       onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => BillingScreen(api: widget.billingApi))),

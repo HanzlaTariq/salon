@@ -209,3 +209,17 @@ R1 is closed (Phase 3). Re-check `npm ls multer` after every `@nestjs/platform-e
 | R132 | Changes to existing code: `appointments.updated_at` is now written by a database trigger (database clock); `appointments_guard()` was replaced with ONE changed condition (walk-in start up to 48 h back only when `app.offline_sync` is on); `QueueService` got optional `Acting` parameters, `resolve`/`inTx` became public; `BookingModule` exports its repositories and `QueueService`. All earlier tests pass unchanged | A regression in booking or queue | Covered by the existing booking, queue and notification e2e suites (green) | Closed |
 | R133 | New packages (Flutter, business app): `drift`, `sqlite3_flutter_libs`, `path_provider`, `path`, `connectivity_plus`, dev: `drift_dev`, `build_runner`. No new npm packages | Supply chain | Pinned by caret ranges; review `flutter pub outdated` before release | Accepted |
 
+
+## Phase 13: reports and analytics
+
+Verified against real PostgreSQL (26 new e2e tests, 241 e2e and 265 unit tests in total pass).
+
+| # | Finding | Status |
+|---|---------|--------|
+| R13-1 | Salon financial data (takings, expenses) could leak to the platform or to staff. | Mitigated by design: `salon_expenses` has an owner-only RLS policy (no staff, customer, public or admin policy); platform analytics return booking COUNTS and PLATFORM subscription revenue only (a test asserts no salon amount appears in the payload); a staff report drops the expense column and never accepts a staff or salon id. Covered by cross-tenant, staff-privacy and role tests. |
+| R13-2 | Expenses could be silently edited or removed to hide takings. | Mitigated: runtime role has no DELETE (soft delete); create / update / delete each write an immutable `audit_logs` row; deleted rows are frozen by a trigger. |
+| R13-3 | A retried "add expense" on a bad mobile network could double-count. | Mitigated: `Idempotency-Key` + partial unique index; concurrent identical requests produce one row (tested). |
+| R13-4 | Heavy report ranges could be used to load the database. | Partly mitigated: range capped at 366 days, daily buckets capped at 93 days, per-route rate limits, new covering indexes. Unresolved: no result caching yet (Phase 15), platform trend scans appointments by month. |
+| R13-5 | Report figures are only as reliable as appointment data (an owner can complete any appointment, so takings are the owner's own record). | Accepted: reports are management information for the owner, not accounting or tax records. Salon revenue is never used for platform billing. |
+| R13-6 | Flutter report screens were written without a Flutter SDK in the build environment. | Open: run `flutter analyze` and `flutter test` in apps/business_app before release. |
+| R13-7 | `npm audit` findings from earlier phases. | Unchanged, no new dependencies were added in Phase 13. |

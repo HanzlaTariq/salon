@@ -1,0 +1,24 @@
+// Phase 13: salon expenses (the only new table). Salon revenue is NEVER stored: it is computed from COMPLETED appointments.
+// Hand-written SQL in migrations/20261120000000_reports_phase13 is the source of truth for CHECK constraints, the guard trigger
+// (no future dates, identity fields immutable, deleted rows frozen), RLS (owner only: no policy for staff, customers, the
+// public context or platform admins) and grants (no DELETE for the runtime role: soft delete only).
+// This model mirrors the columns for typed access; all Phase 13 queries are parameterized $queryRaw in reports.repository.ts.
+
+model SalonExpense {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId        String    @map("salon_id") @db.Uuid
+  /// RENT | SALARIES | UTILITIES | SUPPLIES | MARKETING | EQUIPMENT | MAINTENANCE | TAXES_FEES | OTHER (CHECK).
+  category       String    @db.VarChar(16)
+  amount         Decimal   @db.Decimal(12, 2)
+  /// Asia/Karachi calendar date.
+  expenseDate    DateTime  @map("expense_date") @db.Date
+  description    String?   @db.VarChar(200)
+  idempotencyKey String?   @map("idempotency_key") @db.VarChar(64)
+  createdBy      String    @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy      String?   @map("deleted_by") @db.Uuid
+
+  @@map("salon_expenses")
+}

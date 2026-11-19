@@ -30,6 +30,7 @@ import { OwnerBillingService } from './owner-billing.service';
   ],
   controllers: [OwnerBillingController, AdminBillingController],
   providers: [BillingRepository, BillingCore, BillingMailer, OwnerBillingService, AdminBillingService],
-  exports: [BillingCore],
+  // Phase 13: the analytics module reads the SAME subscription overview numbers as the billing screens (no duplicated MRR logic).
+  exports: [BillingCore, BillingRepository],
 })
 export class BillingModule {}

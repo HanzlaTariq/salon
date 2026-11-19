@@ -4,6 +4,8 @@ import 'package:flutter_core/flutter_core.dart';
 import '../offline/open_offline.dart';
 import '../queue/queue_api.dart';
 import '../queue/queue_screen.dart';
+import '../reports/reports_api.dart';
+import '../reports/staff_report_screen.dart';
 import 'team_api.dart';
 import 'team_models.dart';
 
@@ -110,6 +112,12 @@ class _StaffHomeState extends State<StaffHome> {
                               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => QueueScreen(api: widget.queueApi, owner: false))),
                               icon: const Icon(Icons.format_list_numbered),
                               label: const Text("Today's queue"),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            OutlinedButton.icon(
+                              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => StaffReportScreen(api: ReportsApi(repository: widget.repository)))),
+                              icon: const Icon(Icons.insights_outlined),
+                              label: const Text('My performance'),
                             ),
                             const SizedBox(height: AppSpacing.sm),
                             OutlinedButton.icon(

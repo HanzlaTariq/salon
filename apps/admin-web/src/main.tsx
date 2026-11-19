@@ -7,6 +7,7 @@ import { AuthProvider } from './features/auth/AuthContext';
 import { LoginPage } from './features/auth/LoginPage';
 import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from './features/auth/RecoveryPages';
 import { RequireAuth } from './features/auth/RequireAuth';
+import { AnalyticsPage } from './features/analytics/AnalyticsPage';
 import { BillingSettingsPage } from './features/billing/BillingSettingsPage';
 import { PaymentsPage } from './features/billing/PaymentsPage';
 import { SubscriptionDetailPage } from './features/billing/SubscriptionDetailPage';
@@ -45,6 +46,7 @@ createRoot(document.getElementById('root')!).render(
             <Route element={<RequireAuth />}>
               <Route element={<AppShell />}>
                 <Route index element={<OverviewPage />} />
+                <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="salons" element={<SalonsPage />} />
                 <Route path="salons/:id" element={<SalonDetailPage />} />
                 <Route path="payments" element={<PaymentsPage />} />

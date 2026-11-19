@@ -1,0 +1,44 @@
+PHASE 13: REPORTS AND ANALYTICS. Extract this zip over the project root (same paths). Only NEW and UPDATED files.
+
+NEW
+  apps/api/prisma/schema/migrations/20261120000000_reports_phase13/migration.sql
+  apps/api/prisma/schema/reports.prisma
+  apps/api/src/modules/reports/reports.types.ts
+  apps/api/src/modules/reports/reports.types.spec.ts
+  apps/api/src/modules/reports/reports.repository.ts
+  apps/api/src/modules/reports/analytics.repository.ts
+  apps/api/src/modules/reports/salon-reports.service.ts
+  apps/api/src/modules/reports/expenses.service.ts
+  apps/api/src/modules/reports/admin-analytics.service.ts
+  apps/api/src/modules/reports/reports.controllers.ts
+  apps/api/src/modules/reports/reports.module.ts
+  apps/api/src/modules/reports/dto/reports.dto.ts
+  apps/api/test/reports.e2e-spec.ts
+  apps/admin-web/src/features/analytics/AnalyticsPage.tsx
+  apps/admin-web/src/features/analytics/BarChart.tsx
+  apps/admin-web/src/features/analytics/format.ts
+  apps/admin-web/src/features/analytics/format.test.ts
+  apps/admin-web/src/features/analytics/types.ts
+  apps/business_app/lib/reports/reports_models.dart
+  apps/business_app/lib/reports/reports_api.dart
+  apps/business_app/lib/reports/reports_widgets.dart
+  apps/business_app/lib/reports/reports_screen.dart
+  apps/business_app/lib/reports/expenses_screen.dart
+  apps/business_app/lib/reports/staff_report_screen.dart
+  apps/business_app/test/reports_models_test.dart
+  docs/PHASE13.md
+  PHASE13_CHANGES.txt
+
+UPDATED
+  apps/api/src/app.module.ts                          (+ ReportsModule)
+  apps/api/src/common/auth/permissions.ts             (+ analytics.read for Super Admin, Support, Finance)
+  apps/api/src/modules/billing/billing.module.ts      (exports BillingRepository: analytics reuses the SAME MRR / revenue numbers)
+  apps/admin-web/src/main.tsx                         (+ /analytics route)
+  apps/admin-web/src/app/AppShell.tsx                 (+ Analytics menu item)
+  apps/business_app/lib/salon/salon_home.dart         (+ "Reports and expenses" button)
+  apps/business_app/lib/team/staff_home.dart          (+ "My performance" button)
+  docs/security/risk-register.md                      (+ Phase 13 section)
+
+DATABASE: apps/api> npx prisma migrate deploy
+  (adds salon_expenses with owner-only RLS, a guard trigger and 6 indexes; no existing table is changed)
+NEW DEPENDENCIES: none.
