@@ -23,5 +23,7 @@ import { SalonBookingService } from './salon-booking.service';
     StaffQueueController, OwnerQueueController, CustomerLiveController,
   ],
   providers: [BookingRepository, QueueRepository, CustomerBookingService, CustomerLiveService, SalonBookingService, QueueService],
+  // Phase 12: the offline sync service replays queue actions through the SAME service (same rules, same database guards).
+  exports: [BookingRepository, QueueRepository, QueueService],
 })
 export class BookingModule {}

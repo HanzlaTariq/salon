@@ -1,0 +1,40 @@
+// Phase 12: offline-first sync. Hand-written SQL in migrations/20261119000000_sync_phase12 is the source of truth for CHECK constraints,
+// triggers, RLS policies and grants. These models only let Prisma know the tables exist (the API reads and writes them with $queryRaw).
+
+/// Append-only ledger of every offline operation a device sent. (salon, user, operation) is unique: an operation is applied at most once.
+model SyncOperation {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId             String   @map("salon_id") @db.Uuid
+  userId              String   @map("user_id") @db.Uuid
+  deviceId            String   @map("device_id") @db.Uuid
+  operationId         String   @map("operation_id") @db.Uuid
+  kind                String   @db.VarChar(16)
+  targetAppointmentId String?  @map("target_appointment_id") @db.Uuid
+  refOperationId      String?  @map("ref_operation_id") @db.Uuid
+  fingerprint         String   @db.Char(64)
+  clientCreatedAt     DateTime @map("client_created_at") @db.Timestamptz(6)
+  effectiveAt         DateTime @map("effective_at") @db.Timestamptz(6)
+  receivedAt          DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+  status              String   @db.VarChar(8)
+  resultCode          String?  @map("result_code") @db.VarChar(40)
+  resultMessage       String?  @map("result_message") @db.VarChar(300)
+  appointmentId       String?  @map("appointment_id") @db.Uuid
+
+  @@unique([salonId, userId, operationId], map: "sync_operations_once")
+  @@index([salonId, receivedAt], map: "sync_operations_salon_received_idx")
+  @@map("sync_operations")
+}
+
+/// Internal notes on an appointment (salon side only, append-only, never visible to customers).
+model AppointmentNote {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId       String   @map("salon_id") @db.Uuid
+  appointmentId String   @map("appointment_id") @db.Uuid
+  authorUserId  String   @map("author_user_id") @db.Uuid
+  body          String   @db.VarChar(500)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([appointmentId, createdAt], map: "appointment_notes_appt_idx")
+  @@index([salonId, createdAt], map: "appointment_notes_salon_created_idx")
+  @@map("appointment_notes")
+}

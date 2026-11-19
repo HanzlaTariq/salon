@@ -3,6 +3,8 @@ import 'package:flutter_core/flutter_core.dart';
 
 import 'billing/billing_api.dart';
 import 'catalog/catalog_api.dart';
+import 'offline/offline_scope.dart';
+import 'offline/sync_gateway.dart';
 import 'queue/queue_api.dart';
 import 'salon/salon_api.dart';
 import 'salon/salon_home.dart';
@@ -18,11 +20,12 @@ void main() {
     teamApi: TeamApi(repository: repository),
     billingApi: BillingApi(repository: repository),
     queueApi: QueueApi(repository: repository),
+    syncGateway: SyncApi(repository: repository),
   ));
 }
 
 class BusinessApp extends StatelessWidget {
-  const BusinessApp({super.key, required this.repository, required this.salonApi, required this.catalogApi, required this.teamApi, required this.billingApi, required this.queueApi});
+  const BusinessApp({super.key, required this.repository, required this.salonApi, required this.catalogApi, required this.teamApi, required this.billingApi, required this.queueApi, required this.syncGateway});
 
   final AuthRepository repository;
   final SalonApi salonApi;
@@ -30,6 +33,7 @@ class BusinessApp extends StatelessWidget {
   final TeamApi teamApi;
   final BillingApi billingApi;
   final QueueApi queueApi;
+  final SyncGateway syncGateway;
 
   @override
   Widget build(BuildContext context) {
@@ -38,17 +42,22 @@ class BusinessApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      home: AuthGate(
+      // Phase 12: the offline hub lives ABOVE the sign-in gate, so a token refresh never touches the waiting operations.
+      home: OfflineScope(
         repository: repository,
-        accountType: 'SALON_OWNER',
-        signedInBuilder: (_) {
-          final role = repository.session?.user.role;
-          // Owners register and manage the salon. Staff accounts (Phase 5 invitations) see their own schedule only.
-          if (role == 'SALON_OWNER') {
-            return SalonHome(repository: repository, api: salonApi, catalogApi: catalogApi, teamApi: teamApi, billingApi: billingApi, queueApi: queueApi);
-          }
-          return StaffHome(repository: repository, api: teamApi, queueApi: queueApi);
-        },
+        gateway: syncGateway,
+        child: AuthGate(
+          repository: repository,
+          accountType: 'SALON_OWNER',
+          signedInBuilder: (_) {
+            final role = repository.session?.user.role;
+            // Owners register and manage the salon. Staff accounts (Phase 5 invitations) see their own schedule only.
+            if (role == 'SALON_OWNER') {
+              return SalonHome(repository: repository, api: salonApi, catalogApi: catalogApi, teamApi: teamApi, billingApi: billingApi, queueApi: queueApi);
+            }
+            return StaffHome(repository: repository, api: teamApi, queueApi: queueApi);
+          },
+        ),
       ),
     );
   }

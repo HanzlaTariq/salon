@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_core/flutter_core.dart';
 
+import '../offline/open_offline.dart';
 import '../queue/queue_api.dart';
 import '../queue/queue_screen.dart';
 import 'team_api.dart';
@@ -109,6 +110,12 @@ class _StaffHomeState extends State<StaffHome> {
                               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => QueueScreen(api: widget.queueApi, owner: false))),
                               icon: const Icon(Icons.format_list_numbered),
                               label: const Text("Today's queue"),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            OutlinedButton.icon(
+                              onPressed: () => openOfflineAppointments(context),
+                              icon: const Icon(Icons.cloud_sync_outlined),
+                              label: const Text('Appointments (works offline)'),
                             ),
                           ],
                           const SizedBox(height: AppSpacing.xl),

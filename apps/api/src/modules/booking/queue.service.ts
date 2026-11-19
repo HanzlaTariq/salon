@@ -33,13 +33,29 @@ const statusConflict = (a: AppointmentRecord) =>
   conflict(`This appointment is ${a.status.toLowerCase().replace('_', ' ')}.`, { rule: 'STATUS', status: a.status });
 
 type Kind = 'OWNER' | 'STAFF';
-interface Scope {
+export interface Scope {
   user: AuthenticatedUser;
   kind: Kind;
   salon: SalonRecord;
   /** The caller's own staff profile (STAFF only). */
   own: OwnStaffRecord | null;
 }
+/** Phase 12 (offline sync). A walk-in written down within this long of "now" is simply a walk-in of now. */
+const BACKDATE_THRESHOLD_MS = 2 * MINUTE_MS;
+
+/**
+ * Extra instructions of the offline sync service for the actions below. Online requests never pass them.
+ *  - `at`: when the person REALLY acted (already clamped by the sync service to the last 48 hours and never later than now). It is the
+ *    moment that is recorded (started / completed / no-show / walk-in time) and the moment the rules are judged at. Forecasts and
+ *    estimates always use the real clock.
+ *  - `after`: runs inside the SAME transaction, after the change and before the commit. The sync service writes its ledger row there,
+ *    so the change and its record commit together or not at all (a retry can never apply it twice).
+ */
+export interface Acting {
+  at?: Date;
+  after?: (tx: Tx, a: AppointmentRecord) => Promise<void>;
+}
+
 interface Loaded {
   rows: AppointmentRecord[];
   projection: QueueProjection;
@@ -80,7 +96,8 @@ export class QueueService {
   ) {}
 
   // ------------------------------------------------------------------ who is calling, and where
-  private async resolve(user: AuthenticatedUser): Promise<Scope> {
+  /** Who is calling, and for which salon (derived from the session). Also used by the Phase 12 sync service. */
+  async resolve(user: AuthenticatedUser): Promise<Scope> {
     if (user.role === 'SALON_OWNER') {
       const salon = await this.tenant.withTenant(toTenantContext(user), (tx: Tx) => this.salons.findByOwner(tx, user.id));
       if (!salon) throw notFound('Salon');
@@ -96,7 +113,8 @@ export class QueueService {
     return { user, kind: 'STAFF', salon, own };
   }
 
-  private inTx<T>(s: Scope, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  /** Runs `fn` in a transaction scoped to the caller's salon (Row-Level Security applies). */
+  inTx<T>(s: Scope, fn: (tx: Tx) => Promise<T>): Promise<T> {
     return this.tenant.withTenant(toTenantContext(s.user, s.salon.id), fn);
   }
 
@@ -267,31 +285,36 @@ export class QueueService {
 
   private async doComplete(tx: Tx, s: Scope, a: AppointmentRecord, now: Date): Promise<void> {
     if (a.status !== 'IN_PROGRESS') throw statusConflict(a);
-    if (!(await this.q.markCompleted(tx, a.id, now))) throw conflict('This appointment was just changed. Please refresh.');
+    // A completion is never recorded before its start (a device clock that jumped back must not break the CHECK constraint).
+    const when = a.startedAt && now.getTime() < a.startedAt.getTime() ? a.startedAt : now;
+    if (!(await this.q.markCompleted(tx, a.id, when))) throw conflict('This appointment was just changed. Please refresh.');
     await this.repo.insertHistory(tx, {
       salonId: s.salon.id, appointmentId: a.id, event: 'COMPLETED', fromStatus: 'IN_PROGRESS', toStatus: 'COMPLETED', actorUserId: s.user.id,
       actorRole: this.actorRole(s), reason: null, oldStartsAt: null, newStartsAt: null,
     });
   }
 
-  async start(user: AuthenticatedUser, id: string) {
+  async start(user: AuthenticatedUser, id: string, acting?: Acting) {
     return this.withAppointment(user, id, async ({ tx, s, a, now }) => {
-      await this.doStart(tx, s, a, now);
+      await this.doStart(tx, s, a, acting?.at ?? now);
+      if (acting?.after) await acting.after(tx, a);
       return this.result(tx, s, a, now);
     });
   }
 
-  async complete(user: AuthenticatedUser, id: string) {
+  async complete(user: AuthenticatedUser, id: string, acting?: Acting) {
     return this.withAppointment(user, id, async ({ tx, s, a, now }) => {
-      await this.doComplete(tx, s, a, now);
+      await this.doComplete(tx, s, a, acting?.at ?? now);
+      if (acting?.after) await acting.after(tx, a);
       return this.result(tx, s, a, now);
     });
   }
 
   /** Only after the salon's grace period (counted from the booked time or the customer's own ETA, whichever is later). */
-  async noShow(user: AuthenticatedUser, id: string, dto: NoShowDto) {
+  async noShow(user: AuthenticatedUser, id: string, dto: NoShowDto, acting?: Acting) {
     const reason = dto.reason && dto.reason.trim().length > 0 ? dto.reason.trim() : null;
-    return this.withAppointment(user, id, async ({ tx, s, a, now, policy }) => {
+    return this.withAppointment(user, id, async ({ tx, s, a, now: realNow, policy }) => {
+      const now = acting?.at ?? realNow;
       const d = noShowDecision(policy, a.status, a.startsAt.getTime(), a.arrivalState === 'NONE' ? null : a.customerEtaAt?.getTime() ?? null, now.getTime());
       if (!d.allowed) {
         if (d.reason === 'STATUS') throw statusConflict(a);
@@ -303,7 +326,8 @@ export class QueueService {
         salonId: s.salon.id, appointmentId: a.id, event: 'NO_SHOW', fromStatus: 'CONFIRMED', toStatus: 'NO_SHOW', actorUserId: s.user.id,
         actorRole: this.actorRole(s), reason, oldStartsAt: null, newStartsAt: null,
       });
-      return this.result(tx, s, a, now);
+      if (acting?.after) await acting.after(tx, a);
+      return this.result(tx, s, a, realNow);
     });
   }
 
@@ -351,7 +375,7 @@ export class QueueService {
    * allows (working hours, breaks, leave, buffer, other appointments, the current service running late). It never takes the time
    * of someone who booked. Price and duration come from the catalogue exactly as for an online booking.
    */
-  async addWalkIn(user: AuthenticatedUser, dto: OwnerWalkInDto | (Omit<OwnerWalkInDto, 'staffId'> & { staffId?: undefined }), idempotencyKey: string | undefined) {
+  async addWalkIn(user: AuthenticatedUser, dto: OwnerWalkInDto | (Omit<OwnerWalkInDto, 'staffId'> & { staffId?: undefined }), idempotencyKey: string | undefined, acting?: Acting) {
     if (idempotencyKey !== undefined && !IDEMPOTENCY_KEY_RE.test(idempotencyKey)) throw bad('Idempotency-Key must be 8 to 64 characters: letters, digits, - and _.');
     const s = await this.resolve(user);
     const now = this.clock.now();
@@ -363,6 +387,8 @@ export class QueueService {
     if (dto.phone && dto.phone.trim().length > 0 && !phone) throw bad('The phone number is not valid. Use a Pakistani mobile number such as 0300 1234567.');
     const note = dto.note && dto.note.trim().length > 0 ? dto.note.trim() : null;
     const fingerprint = walkInFingerprint({ staffId, serviceIds: dto.serviceIds, name, phone, note });
+    // Offline sync: the person walked in earlier. The time is searched from THAT moment, not from the moment the phone found a signal.
+    const backdated = acting?.at !== undefined && now.getTime() - acting.at.getTime() > BACKDATE_THRESHOLD_MS;
 
     try {
       return await this.inTx(s, async (tx) => {
@@ -371,6 +397,7 @@ export class QueueService {
           const prior = await this.q.findWalkInByIdempotency(tx, s.salon.id, idempotencyKey);
           if (prior) {
             if (prior.requestFingerprint !== fingerprint) throw conflict('This Idempotency-Key was already used for a different walk-in.');
+            if (acting?.after) await acting.after(tx, prior);
             return this.result(tx, s, prior, now); // a retry: the same walk-in, nothing new is created
           }
         }
@@ -392,11 +419,14 @@ export class QueueService {
         }
 
         // The staff member is free from `freeAtMs` (a service running late pushes it back); look for the first real slot from then on.
-        const loaded = (await this.refresh(tx, s, [staffId], now)).get(staffId) as Loaded;
-        const fromMs = Math.max(now.getTime(), loaded.projection.freeAtMs);
+        // A backdated (offline) walk-in is placed from the moment the person walked in: today's live queue does not apply to it.
+        const fromMs = backdated
+          ? (acting?.at as Date).getTime()
+          : Math.max(now.getTime(), ((await this.refresh(tx, s, [staffId], now)).get(staffId) as Loaded).projection.freeAtMs);
         const date = karachiParts(fromMs).date;
         const hours = (await this.discovery.hoursForSalons(tx, [s.salon.id])).get(s.salon.id) ?? {};
-        const week = (await this.discovery.staffWeeks(tx, [staffId], today, addDaysIso(today, 1))).get(staffId);
+        const weekFrom = backdated ? date : today;
+        const week = (await this.discovery.staffWeeks(tx, [staffId], weekFrom, addDaysIso(weekFrom, 1))).get(staffId);
         const base = dayStartMs(date);
         const busy = await this.discovery.busyByStaff(tx, [staffId], base - DAY_MS, base + 2 * DAY_MS);
         const starts = week
@@ -407,6 +437,8 @@ export class QueueService {
         const startsAt = new Date(slotMs(date, starts[0]));
         const endsAt = new Date(startsAt.getTime() + durationMin * MINUTE_MS);
         const blockedUntil = new Date(endsAt.getTime() + policy.bufferMinutes * MINUTE_MS);
+        // Only a backdated walk-in may start in the past (up to 48 hours). The flag is transaction-local and read by appointments_guard().
+        if (backdated) await tx.$queryRaw`SELECT set_config('app.offline_sync', 'on', true)`;
         const id = await this.q.insertWalkIn(tx, {
           salonId: s.salon.id, staffId, name, phone, startsAt, endsAt, bufferMinutes: policy.bufferMinutes, blockedUntil, totalDurationMinutes: durationMin,
           totalPrice, salonName: s.salon.name, staffName: lines[0].staffName, note, idempotencyKey: idempotencyKey ?? null,
@@ -419,8 +451,9 @@ export class QueueService {
           salonId: s.salon.id, appointmentId: id, event: 'CREATED', fromStatus: null, toStatus: 'CONFIRMED', actorUserId: s.user.id,
           actorRole: this.actorRole(s), reason: null, oldStartsAt: null, newStartsAt: startsAt,
         });
-        const created = await this.repo.findForSalon(tx, s.salon.id, id, this.includePhone(s), s.own?.id ?? null);
-        return this.result(tx, s, created as AppointmentRecord, now);
+        const created = (await this.repo.findForSalon(tx, s.salon.id, id, this.includePhone(s), s.own?.id ?? null)) as AppointmentRecord;
+        if (acting?.after) await acting.after(tx, created);
+        return this.result(tx, s, created, now);
       });
     } catch (e) {
       if (isExclusionViolation(e)) throw new AppException('SLOT_TAKEN', 'That time was just taken. Please try again.', 409);

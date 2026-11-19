@@ -1,0 +1,48 @@
+PHASE 12: OFFLINE-FIRST SYNC. Extract this zip over the project root (same paths). Only NEW and UPDATED files.
+
+NEW
+  apps/api/prisma/schema/migrations/20261119000000_sync_phase12/migration.sql
+  apps/api/prisma/schema/sync.prisma
+  apps/api/src/modules/sync/sync.types.ts
+  apps/api/src/modules/sync/sync.types.spec.ts
+  apps/api/src/modules/sync/sync.repository.ts
+  apps/api/src/modules/sync/sync.service.ts
+  apps/api/src/modules/sync/sync.controllers.ts
+  apps/api/src/modules/sync/sync.module.ts
+  apps/api/src/modules/sync/dto/sync.dto.ts
+  apps/api/test/sync.e2e-spec.ts
+  apps/business_app/lib/offline/app_database.dart
+  apps/business_app/lib/offline/attention_screen.dart
+  apps/business_app/lib/offline/connectivity_probe.dart
+  apps/business_app/lib/offline/drift_store.dart
+  apps/business_app/lib/offline/local_store.dart
+  apps/business_app/lib/offline/offline_models.dart
+  apps/business_app/lib/offline/offline_overlay.dart
+  apps/business_app/lib/offline/offline_scope.dart
+  apps/business_app/lib/offline/offline_today_screen.dart
+  apps/business_app/lib/offline/open_offline.dart
+  apps/business_app/lib/offline/sync_engine.dart
+  apps/business_app/lib/offline/sync_gateway.dart
+  apps/business_app/lib/offline/sync_status_chip.dart
+  apps/business_app/lib/offline/walk_in_sheet.dart
+  apps/business_app/test/offline_models_test.dart
+  apps/business_app/test/offline_overlay_test.dart
+  apps/business_app/test/sync_engine_test.dart
+  apps/business_app/test/support/offline_fakes.dart
+  docs/PHASE12.md
+  PHASE12_CHANGES.txt
+
+UPDATED
+  apps/api/src/app.module.ts
+  apps/api/src/modules/booking/booking.module.ts
+  apps/api/src/modules/booking/queue.service.ts
+  apps/business_app/pubspec.yaml
+  apps/business_app/lib/main.dart
+  apps/business_app/lib/salon/salon_home.dart
+  apps/business_app/lib/team/staff_home.dart
+  docs/security/risk-register.md
+
+NOT IN THE ZIP (generated on your machine)
+  apps/business_app/lib/offline/app_database.g.dart   -> dart run build_runner build --delete-conflicting-outputs
+
+DATABASE: apps/api> npx prisma migrate deploy   (adds sync_operations, appointment_notes, updated_at trigger, revised appointments_guard)

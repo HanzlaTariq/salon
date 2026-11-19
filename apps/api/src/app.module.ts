@@ -21,6 +21,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { QrModule } from './modules/qr/qr.module';
 import { SalonsModule } from './modules/salons/salons.module';
 import { StaffModule } from './modules/staff/staff.module';
+import { SyncModule } from './modules/sync/sync.module';
 import { StorageModule } from './common/storage/storage.module';
 import { HealthModule } from './modules/health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -78,6 +79,7 @@ const env = parseEnv();
     BookingModule,
     NotificationsModule,
     QrModule,
+    SyncModule,
     HealthModule,
   ],
   providers: [

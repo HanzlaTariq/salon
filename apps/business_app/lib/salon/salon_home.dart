@@ -1,5 +1,6 @@
 import '../qr/qr_api.dart';
 import '../qr/qr_screen.dart';
+import '../offline/open_offline.dart';
 import '../queue/queue_api.dart';
 import '../queue/queue_screen.dart';
 import 'package:flutter/material.dart';
@@ -234,6 +235,14 @@ class _SalonHomeState extends State<SalonHome> {
                       onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => QueueScreen(api: widget.queueApi, owner: true))),
                       icon: const Icon(Icons.format_list_numbered),
                       label: const Text('Live queue and walk-ins'),
+                    ),
+                  ],
+                  if (o.salon.status == 'APPROVED') ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: () => openOfflineAppointments(context),
+                      icon: const Icon(Icons.cloud_sync_outlined),
+                      label: const Text('Appointments (works offline)'),
                     ),
                   ],
                   if (o.salon.status == 'APPROVED') ...[
