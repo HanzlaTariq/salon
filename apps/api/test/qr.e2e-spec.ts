@@ -177,7 +177,7 @@ d('Phase 11: salon link, QR code, poster, landing page (real PostgreSQL)', () =>
       for (const bad of ['size=10', 'size=99999', 'size=abc', 'format=gif', 'format=png;ls', 'x=1']) {
         await h.http().get(`/api/v1/salons/mine/qr/image?${bad}`).set(bearer(s.o.access)).expect(400);
       }
-    });
+    }, 30_000); // renders and decodes 512 / 1024 px PNGs: CPU-heavy, slower than jest's 5 s default on small CI machines
 
     it('SVG is served with the right type', async () => {
       const s = await approvedSalon();
