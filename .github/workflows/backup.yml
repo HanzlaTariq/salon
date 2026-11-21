@@ -35,7 +35,7 @@ jobs:
         run: |
           export PATH="$PATH_PG:$PATH"
           bash infra/backup/backup.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: salon-db-backup
           path: backups/
