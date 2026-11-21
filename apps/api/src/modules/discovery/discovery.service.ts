@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { AuthenticatedUser, toTenantContext } from '../../common/auth/authenticated-user';
 import { AppException } from '../../common/errors/app-exception';
 import { ClientContext } from '../../common/http/client-context';
-import { ObjectStorage } from '../../common/storage/object-storage';
+import { PublicUrlSigner } from '../../common/storage/public-url-signer';
 import { TenantDb } from '../../common/tenancy/tenant-db.service';
 import { Clock } from '../../common/util/clock';
 import { ENV, Env } from '../../config/env';
@@ -37,7 +37,7 @@ export class DiscoveryService {
     private readonly tenant: TenantDb,
     private readonly repo: DiscoveryRepository,
     private readonly listing: ListingPolicy,
-    private readonly storage: ObjectStorage,
+    private readonly signer: PublicUrlSigner,
     private readonly clock: Clock,
     @Inject(ENV) private readonly env: Env,
   ) {}
@@ -151,7 +151,7 @@ export class DiscoveryService {
       sort,
       /** true when the request carried a location (the server does not keep it). */
       locationUsed: located,
-      imageUrlTtlSec: this.env.SIGNED_URL_TTL_SEC,
+      imageUrlTtlSec: this.signer.guaranteedTtlSec,
     };
   }
 
@@ -162,7 +162,7 @@ export class DiscoveryService {
     let coverUrl: string | null = null;
     if (coverKey) {
       try {
-        coverUrl = await this.storage.signedUrl(coverKey, this.env.SIGNED_URL_TTL_SEC);
+        coverUrl = await this.signer.sign(coverKey);
       } catch {
         this.logger.warn('Could not sign a cover photo URL');
       }

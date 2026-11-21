@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { randomUUID } from 'crypto';
 import { LoggerModule } from 'nestjs-pino';
 import { stdSerializers } from 'pino';
+import { MonitoringModule } from './common/monitoring/monitoring.module';
+import { UserAwareThrottlerGuard } from './common/rate-limit/user-throttler.guard';
 import { buildThrottlerOptions } from './common/rate-limit/throttler.config';
 import { TenancyModule } from './common/tenancy/tenancy.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
@@ -17,6 +19,7 @@ import { CatalogModule } from './modules/catalog/catalog.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { BookingModule } from './modules/booking/booking.module';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { QrModule } from './modules/qr/qr.module';
 import { ReportsModule } from './modules/reports/reports.module';
@@ -67,6 +70,7 @@ const env = parseEnv();
       },
     }),
     ThrottlerModule.forRoot(buildThrottlerOptions(env)),
+    MonitoringModule,
     PrismaModule,
     TenancyModule,
     AuditModule,
@@ -84,12 +88,13 @@ const env = parseEnv();
     SyncModule,
     ReportsModule,
     ReviewsModule,
+    MaintenanceModule,
     HealthModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     // Order matters: rate limit first, then authentication (default deny), then roles/permissions.
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: UserAwareThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: AuthorizationGuard },
   ],

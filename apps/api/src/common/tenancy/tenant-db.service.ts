@@ -86,6 +86,22 @@ export class TenantDb {
   }
 
   /**
+   * Phase 15: maintenance jobs (retention purge, storage reconciliation). No user, no salon, no admin flag: the job can reach
+   * nothing a stranger could not, EXCEPT through the two SECURITY DEFINER functions `maintenance_purge()` and
+   * `maintenance_keys_in_use()`, which set their own transaction-local flag and carry the age / key limits themselves.
+   * Never use this for anything else.
+   */
+  async withMaintenance<T>(fn: (tx: any) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(async (tx: any) => {
+      const t = tx as TenantTx;
+      await t.$queryRaw`SELECT set_config('app.user_id', '', true)`;
+      await t.$queryRaw`SELECT set_config('app.salon_id', '', true)`;
+      await t.$queryRaw`SELECT set_config('app.is_platform_admin', 'false', true)`;
+      return fn(tx);
+    });
+  }
+
+  /**
    * Access for an UNAUTHENTICATED holder of a staff invitation link (Phase 5). Only the invitation row
    * whose SHA-256 token hash equals `tokenHash` is visible (policy `invite_token_select`). The caller may
    * then bind the invitation's salon with `setTenantSalon` inside the same transaction. The hash is

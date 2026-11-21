@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { AppException } from '../../common/errors/app-exception';
-import { ObjectStorage } from '../../common/storage/object-storage';
+import { PublicUrlSigner } from '../../common/storage/public-url-signer';
 import { TenantDb } from '../../common/tenancy/tenant-db.service';
 import { ENV, Env } from '../../config/env';
 import { ListingPolicy } from '../listing/listing';
@@ -8,7 +8,7 @@ import { SalonsRepository, Tx } from '../salons/salons.repository';
 import { CatalogRepository } from './catalog.repository';
 import { priceRange } from './catalog.types';
 
-/** Signing is one storage call per image; cap it so a huge menu cannot fan out unboundedly (cache/CDN: Phase 15). */
+/** Signing is one storage call per image; cap it so a huge menu cannot fan out unboundedly (Phase 15: URLs are cached in `PublicUrlSigner`). */
 const MAX_SIGNED_IMAGES = 60;
 
 /**
@@ -24,7 +24,7 @@ export class PublicCatalogService {
     private readonly tenant: TenantDb,
     private readonly repo: CatalogRepository,
     private readonly salons: SalonsRepository,
-    private readonly storage: ObjectStorage,
+    private readonly signer: PublicUrlSigner,
     @Inject(ENV) private readonly env: Env,
     private readonly listing: ListingPolicy,
   ) {}
@@ -50,7 +50,7 @@ export class PublicCatalogService {
     const urls = new Map<string, string>();
     await Promise.all(keys.map(async (k) => {
       try {
-        urls.set(k, await this.storage.signedUrl(k, this.env.SIGNED_URL_TTL_SEC));
+        urls.set(k, await this.signer.sign(k));
       } catch {
         this.logger.warn('Could not sign a catalogue image URL');
       }
@@ -72,7 +72,7 @@ export class PublicCatalogService {
           }),
         }))
         .filter((c) => c.services.length > 0),
-      imageUrlTtlSec: this.env.SIGNED_URL_TTL_SEC,
+      imageUrlTtlSec: this.signer.guaranteedTtlSec,
     };
   }
 }

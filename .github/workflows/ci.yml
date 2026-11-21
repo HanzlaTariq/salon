@@ -75,3 +75,10 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@v2
         env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+
+  backup-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck the backup and restore scripts
+        run: shellcheck infra/backup/backup.sh infra/backup/restore-drill.sh

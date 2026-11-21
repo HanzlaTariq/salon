@@ -3,6 +3,8 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { configureApp } from './bootstrap';
+import { ErrorReporter } from './common/monitoring/error-reporter';
+import { installProcessHandlers } from './common/monitoring/process-handlers';
 import { parseEnv } from './config/env';
 
 async function main(): Promise<void> {
@@ -10,6 +12,7 @@ async function main(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
   configureApp(app, env);
+  installProcessHandlers(app.get(ErrorReporter), app.get(Logger));
   app.enableShutdownHooks();
   await app.listen(env.PORT);
   app.get(Logger).log(`API listening on :${env.PORT} (${env.NODE_ENV})`);

@@ -476,6 +476,8 @@ d('Phase 2: authentication & authorization (real PostgreSQL)', () => {
         'public/discovery/options', 'public/discovery/salons', 'public/discovery/salons/:id/availability', 'public/discovery/salons/:id/reviews',
         // Phase 10: cron entry point of the notification worker (404 unless NOTIFICATIONS_CRON_SECRET is set; constant-time secret check; no input)
         'internal/notifications/tick',
+        // Phase 15: cron entry point of the maintenance job (404 unless MAINTENANCE_CRON_SECRET is set; constant-time secret check; no input)
+        'internal/maintenance/run',
         // Phase 11: scanned salon code (JSON) and the landing page printed in every QR code (rate limited; 404 for anything not live; no input beyond the code)
         'public/qr/:code', 's/:code',
       ].sort());

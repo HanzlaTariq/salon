@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { AuthenticatedUser } from '../../common/auth/authenticated-user';
 import { sqlState } from '../../common/db/pg-errors';
 import { AppException } from '../../common/errors/app-exception';
-import { ObjectStorage } from '../../common/storage/object-storage';
+import { PublicUrlSigner } from '../../common/storage/public-url-signer';
 import { TenantDb } from '../../common/tenancy/tenant-db.service';
 import { ENV, Env } from '../../config/env';
 import { DiscoveryRepository } from '../discovery/discovery.repository';
@@ -21,7 +21,7 @@ export class FavouritesService {
 
   constructor(
     private readonly tenant: TenantDb, private readonly repo: ReviewsRepository, private readonly discovery: DiscoveryRepository,
-    private readonly listing: ListingPolicy, private readonly storage: ObjectStorage, @Inject(ENV) private readonly env: Env,
+    private readonly listing: ListingPolicy, private readonly signer: PublicUrlSigner, @Inject(ENV) private readonly env: Env,
   ) {}
 
   async list(u: AuthenticatedUser) {
@@ -33,14 +33,14 @@ export class FavouritesService {
       let coverUrl: string | null = null;
       if (r.coverKey) {
         try {
-          coverUrl = await this.storage.signedUrl(r.coverKey, this.env.SIGNED_URL_TTL_SEC);
+          coverUrl = await this.signer.sign(r.coverKey);
         } catch {
           this.logger.warn('Could not sign a cover photo URL');
         }
       }
       return { salonId: r.salonId, name: r.name, city: r.city, area: r.area, salonType: r.salonType, rating: r.ratingAvg, ratingCount: r.ratingCount, coverUrl, addedAt: r.createdAt };
     }));
-    return { items, total: items.length, max: REVIEW_LIMITS.favouritesMax, imageUrlTtlSec: this.env.SIGNED_URL_TTL_SEC };
+    return { items, total: items.length, max: REVIEW_LIMITS.favouritesMax, imageUrlTtlSec: this.signer.guaranteedTtlSec };
   }
 
   /** Idempotent: adding a salon that is already a favourite succeeds and changes nothing. */

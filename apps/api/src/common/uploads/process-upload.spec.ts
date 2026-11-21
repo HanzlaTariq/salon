@@ -61,7 +61,7 @@ describe('processUpload', () => {
 
   it('downsizes very large images', async () => {
     const out = await processUpload(await png(3000, 1000), OPTS);
-    expect((await sharp(out.body).metadata()).width).toBe(2400);
+    expect((await sharp(out.body).metadata()).width).toBe(1600);
   });
 
   it('rejects SVG, HTML, GIF, executables and text renamed as images (415)', async () => {

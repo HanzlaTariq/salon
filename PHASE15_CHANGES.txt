@@ -1,0 +1,61 @@
+PHASE 15 CHANGES: security audit, performance, backups, operations
+Extract over your project folder (same paths). Then follow docs/PHASE15.md section 4.
+
+NEW:
+  .github/dependabot.yml
+  .github/workflows/backup.yml
+  apps/api/prisma/schema/migrations/20261122000000_hardening_phase15/migration.sql
+  apps/api/src/cli/backup-storage.ts
+  apps/api/src/cli/maintenance.ts
+  apps/api/src/common/cache/ttl-cache.spec.ts
+  apps/api/src/common/cache/ttl-cache.ts
+  apps/api/src/common/monitoring/error-reporter.spec.ts
+  apps/api/src/common/monitoring/error-reporter.ts
+  apps/api/src/common/monitoring/monitoring.module.ts
+  apps/api/src/common/monitoring/process-handlers.ts
+  apps/api/src/common/rate-limit/user-throttler.guard.ts
+  apps/api/src/common/storage/backup.spec.ts
+  apps/api/src/common/storage/backup.ts
+  apps/api/src/common/storage/public-url-signer.ts
+  apps/api/src/common/util/secret.ts
+  apps/api/src/modules/maintenance/maintenance.controller.ts
+  apps/api/src/modules/maintenance/maintenance.module.ts
+  apps/api/src/modules/maintenance/maintenance.scheduler.ts
+  apps/api/src/modules/maintenance/maintenance.service.ts
+  apps/api/src/modules/maintenance/maintenance.types.spec.ts
+  apps/api/src/modules/maintenance/maintenance.types.ts
+  apps/api/test/maintenance.e2e-spec.ts
+  apps/api/test/rate-limit-user.e2e-spec.ts
+  apps/api/test/security-audit.e2e-spec.ts
+  docs/BACKUP.md
+  docs/OPERATIONS.md
+  docs/PERFORMANCE.md
+  docs/PHASE15.md
+  docs/security/ASVS-checklist.md
+  infra/backup/backup.ps1
+  infra/backup/backup.sh
+  infra/backup/restore-drill.ps1
+  infra/backup/restore-drill.sh
+  infra/backup/restore-verify.sql
+  infra/db/slow-queries.sql
+
+UPDATED:
+  .github/workflows/ci.yml
+  apps/api/.env.example
+  apps/api/package.json
+  apps/api/src/app.module.ts
+  apps/api/src/bootstrap.ts
+  apps/api/src/common/errors/all-exceptions.filter.ts
+  apps/api/src/common/storage/object-storage.ts
+  apps/api/src/common/storage/storage.module.ts
+  apps/api/src/common/tenancy/tenant-db.service.ts
+  apps/api/src/common/uploads/process-upload.spec.ts
+  apps/api/src/common/uploads/process-upload.ts
+  apps/api/src/config/env.ts
+  apps/api/src/main.ts
+  apps/api/src/modules/catalog/public-catalog.service.ts
+  apps/api/src/modules/discovery/discovery.service.ts
+  apps/api/src/modules/reviews/favourites.service.ts
+  apps/api/src/modules/salons/public-salons.service.ts
+  apps/api/test/auth.e2e-spec.ts
+  docs/security/risk-register.md

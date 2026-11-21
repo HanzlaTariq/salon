@@ -101,6 +101,24 @@ const schema = z.object({
   APP_STORE_URL_IOS: z.string().url().startsWith('https://').optional(),
   /** Platform name printed on posters and the landing page. */
   BRAND_NAME: z.string().trim().min(2).max(40).default('Salon Platform'),
+
+  // ---- Phase 15: maintenance, monitoring, performance ----
+  /** Runs the maintenance loop (retention purge + storage reconciliation) inside this process (never in NODE_ENV=test). Turn off when a cron calls the endpoint instead. */
+  MAINTENANCE_WORKER_ENABLED: bool('true'),
+  /** Enables POST /internal/maintenance/run for a cron service (serverless hosting). At least 32 characters; unset = endpoint disabled. */
+  MAINTENANCE_CRON_SECRET: z.string().min(32, 'MAINTENANCE_CRON_SECRET must be at least 32 characters').optional(),
+  /** false (default) = the storage reconciliation only REPORTS orphaned files; true = it deletes them (after the safety checks in docs/PHASE15.md). */
+  MAINTENANCE_DELETE_ORPHANS: bool('false'),
+  /** A storage object younger than this is never an orphan (an upload may still be saving its database row). */
+  MAINTENANCE_ORPHAN_MIN_AGE_HOURS: z.coerce.number().int().min(1).max(720).default(24),
+  /** Error monitoring (Sentry-compatible DSN). Unset = errors are only logged. The DSN is a write-only key, but keep it out of git anyway. */
+  SENTRY_DSN: z.string().url().optional(),
+  /** Free text shown next to every reported error (for example a git commit). Optional. */
+  APP_RELEASE: z.string().trim().min(1).max(64).optional(),
+  /** Requests slower than this are logged as warnings (0 disables). */
+  SLOW_REQUEST_MS: z.coerce.number().int().min(0).max(120_000).default(1_500),
+  /** Hard limit for receiving one whole request (slow-loris protection). */
+  REQUEST_TIMEOUT_MS: z.coerce.number().int().min(5_000).max(300_000).default(30_000),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -136,6 +154,8 @@ export function parseEnv(raw: NodeJS.ProcessEnv = process.env): Env {
   if (env.NODE_ENV === 'production' && !env.PUBLIC_LINK_BASE_URL.startsWith('https://')) problems.push('PUBLIC_LINK_BASE_URL: must use https:// in production');
   if (env.PUSH_DRIVER === 'fcm' && !env.FCM_SERVICE_ACCOUNT_B64) problems.push('FCM_SERVICE_ACCOUNT_B64: required when PUSH_DRIVER=fcm');
   if (env.NODE_ENV === 'production' && env.PUSH_DRIVER !== 'fcm') problems.push('PUSH_DRIVER: must be fcm in production');
+  if (env.SENTRY_DSN && !env.SENTRY_DSN.startsWith('https://')) problems.push('SENTRY_DSN: must use https://');
+  if (env.NODE_ENV === 'production' && env.MAINTENANCE_DELETE_ORPHANS && env.STORAGE_DRIVER !== 'supabase') problems.push('MAINTENANCE_DELETE_ORPHANS: needs STORAGE_DRIVER=supabase');
   if (env.MAIL_TRANSPORT === 'smtp' && !env.SMTP_HOST) problems.push('SMTP_HOST: required when MAIL_TRANSPORT=smtp');
   if (problems.length > 0) throw new Error(`Invalid environment configuration:\n  - ${problems.join('\n  - ')}`);
   return env;

@@ -17,7 +17,9 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "audit": "npm audit --omit=dev",
-    "admin:create": "ts-node --transpile-only src/cli/create-admin.ts"
+    "admin:create": "ts-node --transpile-only src/cli/create-admin.ts",
+    "maintenance:run": "ts-node --transpile-only src/cli/maintenance.ts",
+    "storage:backup": "ts-node --transpile-only src/cli/backup-storage.ts"
   },
   "prisma": {
     "schema": "prisma/schema"

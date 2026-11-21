@@ -11,10 +11,11 @@ export interface ProcessedUpload {
   sizeBytes: number;
 }
 
-const MAX_EDGE_PX = 2400;
+// Phase 15: 1600 px is sharp on every phone and tablet screen and about half the bytes of 2400 px on mobile data.
+const MAX_EDGE_PX = 1600;
 const MIN_EDGE_PX = 200;
 const MAX_INPUT_PIXELS = 40_000_000; // decompression-bomb guard (a 9000x9000 PNG is tiny on the wire)
-const WEBP_QUALITY = 82;
+const WEBP_QUALITY = 80;
 
 /**
  * Tokens that make a PDF active (scripts, launch actions, embedded files, forms with scripts).
@@ -32,7 +33,7 @@ function sha256(buf: Buffer): string {
  * Validates and NORMALISES an uploaded file:
  *  - type is decided from magic bytes (JPEG/PNG/WebP, plus PDF when `allowPdf`);
  *  - images are fully decoded and re-encoded as WebP (strips EXIF/GPS, polyglot payloads, trailing data),
- *    auto-rotated, capped at 2400px;
+ *    auto-rotated, capped at 1600px;
  *  - corrupt or truncated images are rejected instead of being stored.
  */
 export async function processUpload(input: Buffer, opts: { allowPdf: boolean; maxBytes: number }): Promise<ProcessedUpload> {
@@ -56,7 +57,7 @@ export async function processUpload(input: Buffer, opts: { allowPdf: boolean; ma
     const { data, info } = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'error' })
       .rotate() // honour EXIF orientation, then metadata is dropped on output
       .resize({ width: MAX_EDGE_PX, height: MAX_EDGE_PX, fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: WEBP_QUALITY })
+      .webp({ quality: WEBP_QUALITY, effort: 4 })
       .toBuffer({ resolveWithObject: true });
     if (info.width < MIN_EDGE_PX || info.height < MIN_EDGE_PX) {
       throw new AppException('VALIDATION_FAILED', `The image is too small (minimum ${MIN_EDGE_PX}x${MIN_EDGE_PX} pixels).`, 400);

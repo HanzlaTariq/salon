@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { AppException } from '../../common/errors/app-exception';
-import { ObjectStorage } from '../../common/storage/object-storage';
+import { PublicUrlSigner } from '../../common/storage/public-url-signer';
 import { TenantDb } from '../../common/tenancy/tenant-db.service';
 import { ENV, Env } from '../../config/env';
 import { ListingPolicy } from '../listing/listing';
@@ -27,7 +27,7 @@ export class PublicSalonsService {
   constructor(
     private readonly tenant: TenantDb,
     private readonly repo: SalonsRepository,
-    private readonly storage: ObjectStorage,
+    private readonly signer: PublicUrlSigner,
     @Inject(ENV) private readonly env: Env,
     private readonly listing: ListingPolicy,
   ) {}
@@ -50,7 +50,7 @@ export class PublicSalonsService {
     const signed = await Promise.all(
       photos.map(async (p) => {
         try {
-          return { id: p.id, isCover: p.docType === 'COVER', url: await this.storage.signedUrl(p.storageKey, this.env.SIGNED_URL_TTL_SEC) };
+          return { id: p.id, isCover: p.docType === 'COVER', url: await this.signer.sign(p.storageKey) };
         } catch {
           this.logger.warn('Could not sign a public photo URL');
           return null;
@@ -59,6 +59,6 @@ export class PublicSalonsService {
     );
     // null (not "closed all week") while the owner has not entered any hours yet.
     const openingHours = hours.length > 0 ? weekFromRows(hours) : null;
-    return { ...publicView(salon), openingHours, photos: signed.filter((x): x is NonNullable<typeof x> => x !== null), photoUrlTtlSec: this.env.SIGNED_URL_TTL_SEC };
+    return { ...publicView(salon), openingHours, photos: signed.filter((x): x is NonNullable<typeof x> => x !== null), photoUrlTtlSec: this.signer.guaranteedTtlSec };
   }
 }
