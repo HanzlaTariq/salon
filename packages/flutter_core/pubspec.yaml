@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  google_fonts: ^6.2.1
+  google_fonts: ^9.0.0
   http: ^1.2.2
   flutter_secure_storage: ^9.2.2
   # Phase 10: push notifications. Needs the Firebase files of each app (see docs/PHASE10.md); without them the app runs with the in-app inbox only.
