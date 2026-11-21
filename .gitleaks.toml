@@ -1,0 +1,9 @@
+# Extend the default gitleaks rules, and only ignore the fake secrets used by unit tests.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Dummy secrets used only in unit tests (not real credentials)"
+paths = [
+  '''apps/api/src/config/preflight\.spec\.ts''',
+]
