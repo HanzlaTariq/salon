@@ -223,3 +223,23 @@ Verified against real PostgreSQL (26 new e2e tests, 241 e2e and 265 unit tests i
 | R13-5 | Report figures are only as reliable as appointment data (an owner can complete any appointment, so takings are the owner's own record). | Accepted: reports are management information for the owner, not accounting or tax records. Salon revenue is never used for platform billing. |
 | R13-6 | Flutter report screens were written without a Flutter SDK in the build environment. | Open: run `flutter analyze` and `flutter test` in apps/business_app before release. |
 | R13-7 | `npm audit` findings from earlier phases. | Unchanged, no new dependencies were added in Phase 13. |
+
+
+## Phase 14: reviews, ratings, favourites, moderation
+
+Verified against real PostgreSQL 16 (30 new e2e tests; all 15 e2e suites and 279 unit tests pass; admin-web typecheck and vitest pass).
+
+| # | Finding | Status |
+|---|---------|--------|
+| R14-1 | A customer could review a visit that is not theirs, not completed, too old, or twice; a salon owner could write or edit reviews of their own salon. | Mitigated in the API and again in the database (`reviews_guard`, unique index on the appointment, RLS). Covered by role, IDOR, mass-assignment, window and race tests (4 simultaneous requests create exactly one review). |
+| R14-2 | An owner or admin could change a rating or comment, or a counter could be forged to inflate a salon's average. | Mitigated: only the author can change rating / comment (trigger); the runtime role cannot write the two stats tables (SELECT only) and counts / averages are generated columns; tests compare the counters with the published reviews after create, edit, hide and restore. |
+| R14-3 | Customer identity leaking to salons or the public. | Mitigated: reviews store a snapshot name ("Sara K."); public, owner and staff payloads contain no customer id, e-mail or phone (asserted in tests). The owner's customer list does show phone numbers of that salon's own customers (same as bookings today). |
+| R14-4 | Abuse of moderation: a hidden review disappearing without a trace, or a salon reporting every negative review. | Mitigated: hide needs a reason, writes an audit row, the author is told why, restore exists; one open report per review; only Super Admin acts (Support reads). Unresolved: no rate limit on reports per salon beyond the route limit; no appeal flow for authors. |
+| R14-5 | Review text is user content (XSS). | Mitigated: `<` `>` and control characters rejected by the API, apps render plain text, admin-web renders text nodes (no HTML injection). |
+| R14-6 | Fake reviews. | Reduced, not removed: only completed visits can be reviewed, but an owner can complete an appointment for a friendly account (same trust assumption as reports, R13-5). Reports and moderation are the remedy. |
+| R14-7 | The migration uses `SECURITY DEFINER` functions (stats) and non-FORCED RLS on the two stats tables so the trigger owner can write them. | Accepted: the functions only add or remove one star for the review's own salon / staff, have a fixed `search_path`, and EXECUTE is revoked from PUBLIC / anon / authenticated. On Supabase the owner is `postgres`, which behaves the same. |
+| R14-8 | `prisma validate` / `generate` could not run in the build environment (Prisma binaries unreachable), so `reviews.prisma` was not machine-validated; generated columns use `@default(dbgenerated())`. All Phase 14 SQL uses `$queryRaw`, and the SQL was tested on real PostgreSQL through the pg adapter. | Open: run `npx prisma validate` and `npm run test:e2e` WITHOUT `TEST_PRISMA_ADAPTER` on your machine (see R9). |
+| R14-9 | Flutter screens (customer and business app) were written without a Flutter SDK. Model parsing has unit tests that were written but not executed here. | Open: run `flutter analyze` and `flutter test` in both apps before release (same as R13-6). |
+| R14-10 | No notification for new reviews / owner responses. | Open (planned): needs new kinds in the notification constraint (Phase 10 table). |
+| R14-11 | Existing code touched: discovery (rating join, `rating` sort, card rating), `permissions.ts` (two permissions, Support gets read), `app.module.ts`, two existing tests (sort list, public-route allowlist), Flutter discovery / booking-detail / home screens. | Covered by the existing discovery, auth and booking suites (green). |
+

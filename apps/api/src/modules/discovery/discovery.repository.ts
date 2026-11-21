@@ -46,6 +46,9 @@ export interface SearchRow {
   serviceCount: number;
   minDuration: number;
   staffIds: string[];
+  /** Average of PUBLISHED salon ratings (two decimals) and how many reviews it rests on. Null / 0 when the salon has no review. */
+  ratingAvg: number | null;
+  ratingCount: number;
   total: number;
 }
 
@@ -128,18 +131,23 @@ export class DiscoveryRepository {
       )
       SELECT b.id, b.name, b.salon_type, b.city, b.area, b.address_line, b.dist_m,
              a.price_from, a.price_to, a.service_count, a.min_duration, a.staff_ids,
+             rs.rating_avg, COALESCE(rs.review_count, 0) AS review_count,
              count(*) OVER ()::int AS total
       FROM base b JOIN agg a ON a.salon_id = b.id
+      LEFT JOIN salon_rating_stats rs ON rs.salon_id = b.id
       ORDER BY
         CASE WHEN ${p.sort}::text = 'nearest' THEN b.dist_m END ASC NULLS LAST,
         CASE WHEN ${p.sort}::text = 'price_low' THEN a.price_from END ASC,
+        CASE WHEN ${p.sort}::text = 'rating' THEN rs.rating_avg END DESC NULLS LAST,
+        CASE WHEN ${p.sort}::text = 'rating' THEN COALESCE(rs.review_count, 0) END DESC,
         CASE WHEN ${p.sort}::text = 'newest' THEN b.approved_at END DESC NULLS LAST,
         lower(b.name), b.id
       LIMIT ${p.limit}::int OFFSET ${p.offset}::int`;
     return rows.map((r) => ({
       id: r.id, name: r.name, salonType: r.salon_type, city: r.city, area: r.area, addressLine: r.address_line,
       distanceM: num(r.dist_m), priceFrom: moneyOrNull(r.price_from) as string, priceTo: moneyOrNull(r.price_to) as string,
-      serviceCount: Number(r.service_count), minDuration: Number(r.min_duration), staffIds: (r.staff_ids as string[]) ?? [], total: Number(r.total),
+      serviceCount: Number(r.service_count), minDuration: Number(r.min_duration), staffIds: (r.staff_ids as string[]) ?? [],
+      ratingAvg: num(r.rating_avg), ratingCount: Number(r.review_count), total: Number(r.total),
     }));
   }
 

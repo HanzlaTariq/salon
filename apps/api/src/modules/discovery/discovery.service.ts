@@ -59,7 +59,7 @@ export class DiscoveryService {
     return {
       cities: [...cities.values()],
       salonTypes: [...SALON_TYPES],
-      /** Only orders that can be answered truthfully today. Rating, popularity and earliest-available arrive with their data (Phases 14 and 8). */
+      /** Only orders that can be answered truthfully today (rating arrived with Phase 14; popularity and earliest-available are not offered). */
       sorts: [...DISCOVERY_SORTS],
       radiusKm: { default: DISCOVERY_LIMITS.defaultRadiusKm, max: DISCOVERY_LIMITS.maxRadiusKm },
       availabilityHorizonDays: DISCOVERY_LIMITS.horizonDays,
@@ -177,9 +177,9 @@ export class DiscoveryService {
       addressLine: r.addressLine,
       coverUrl,
       distanceKm: distanceKm(r.distanceM),
-      /** Ratings arrive with reviews (Phase 14): honest nulls instead of invented numbers. */
-      rating: null,
-      ratingCount: 0,
+      /** Average of PUBLISHED reviews, two decimals; null (never an invented number) while the salon has no review. */
+      rating: r.ratingAvg,
+      ratingCount: r.ratingCount,
       priceFrom: r.priceFrom,
       priceTo: r.priceTo,
       serviceCount: r.serviceCount,

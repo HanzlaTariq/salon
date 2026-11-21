@@ -20,6 +20,7 @@ import { BookingModule } from './modules/booking/booking.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { QrModule } from './modules/qr/qr.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 import { SalonsModule } from './modules/salons/salons.module';
 import { StaffModule } from './modules/staff/staff.module';
 import { SyncModule } from './modules/sync/sync.module';
@@ -82,6 +83,7 @@ const env = parseEnv();
     QrModule,
     SyncModule,
     ReportsModule,
+    ReviewsModule,
     HealthModule,
   ],
   providers: [

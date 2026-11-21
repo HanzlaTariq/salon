@@ -11,6 +11,8 @@ import '../billing/billing_api.dart';
 import '../billing/billing_screen.dart';
 import '../reports/reports_api.dart';
 import '../reports/reports_screen.dart';
+import '../reviews/owner_reviews_screen.dart';
+import '../reviews/reviews_api.dart';
 import '../catalog/catalog_api.dart';
 import '../catalog/catalog_screen.dart';
 import '../team/team_api.dart';
@@ -261,6 +263,12 @@ class _SalonHomeState extends State<SalonHome> {
                       onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ReportsScreen(api: ReportsApi(repository: widget.repository)))),
                       icon: const Icon(Icons.insights_outlined),
                       label: const Text('Reports and expenses'),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => OwnerReviewsScreen(api: ReviewsApi(repository: widget.repository)))),
+                      icon: const Icon(Icons.star_outline_rounded),
+                      label: const Text('Reviews and customers'),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     OutlinedButton.icon(

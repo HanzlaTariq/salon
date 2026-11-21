@@ -25,6 +25,10 @@ export const PERMISSIONS = {
   SUBSCRIPTIONS_MANAGE: 'subscriptions.manage',
   /** Phase 13: platform analytics (salon / customer / booking counts and PLATFORM subscription revenue). Never a salon's own money. */
   ANALYTICS_READ: 'analytics.read',
+  /** Phase 14: read the moderation queue (all reviews, hidden ones and reports). */
+  REVIEWS_READ: 'reviews.read',
+  /** Phase 14: hide / restore a review and resolve reports (Super Admin only). */
+  REVIEWS_MODERATE: 'reviews.moderate',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -33,7 +37,7 @@ const ALL: readonly Permission[] = Object.values(PERMISSIONS);
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   SUPER_ADMIN: ALL,
-  SUPPORT: [PERMISSIONS.USERS_READ, PERMISSIONS.SALONS_READ, PERMISSIONS.BILLING_READ, PERMISSIONS.ANALYTICS_READ],
+  SUPPORT: [PERMISSIONS.USERS_READ, PERMISSIONS.SALONS_READ, PERMISSIONS.BILLING_READ, PERMISSIONS.ANALYTICS_READ, PERMISSIONS.REVIEWS_READ],
   FINANCE: [PERMISSIONS.BILLING_READ, PERMISSIONS.PAYMENTS_REVIEW, PERMISSIONS.ANALYTICS_READ],
   SALON_OWNER: [],
   SALON_STAFF: [],

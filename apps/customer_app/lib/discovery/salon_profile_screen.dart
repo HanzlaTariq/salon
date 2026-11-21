@@ -3,6 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_core/flutter_core.dart';
 
 import '../booking/booking_api.dart';
+import '../reviews/favourites_screen.dart';
+import '../reviews/review_api.dart';
+import '../reviews/review_models.dart';
+import '../reviews/review_widgets.dart';
+import '../reviews/salon_reviews_screen.dart';
 import 'availability_screen.dart';
 import 'discovery_api.dart';
 import 'discovery_models.dart';
@@ -14,11 +19,14 @@ const _maxSelected = 10;
 /// Salon profile: photos, hours, services with the exact price of every staff member (price comparison) and a
 /// selection of services to check times for.
 class SalonProfileScreen extends StatefulWidget {
-  const SalonProfileScreen({super.key, required this.api, required this.bookingApi, required this.card});
+  const SalonProfileScreen({super.key, required this.api, required this.bookingApi, required this.card, this.reviewApi});
 
   final DiscoveryApi api;
   final BookingApi bookingApi;
   final SalonCard card;
+
+  /// Phase 14: when given, the screen offers the favourite heart and the reviews of the salon.
+  final ReviewApi? reviewApi;
 
   @override
   State<SalonProfileScreen> createState() => _SalonProfileScreenState();
@@ -50,7 +58,10 @@ class _SalonProfileScreenState extends State<SalonProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.card.name, overflow: TextOverflow.ellipsis)),
+      appBar: AppBar(
+        title: Text(widget.card.name, overflow: TextOverflow.ellipsis),
+        actions: [if (widget.reviewApi != null) FavouriteButton(api: widget.reviewApi!, salonId: widget.card.id)],
+      ),
       body: FutureBuilder<(SalonProfile, List<CatalogCategory>)>(
         future: _load,
         builder: (context, snap) {
@@ -71,6 +82,22 @@ class _SalonProfileScreenState extends State<SalonProfileScreen> {
               _Photos(photos: profile.photos, name: profile.name),
               Padding(padding: const EdgeInsets.all(AppSpacing.lg), child: _Info(profile: profile)),
               if (profile.openingHours != null) Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg), child: _Hours(hours: profile.openingHours!)),
+              if (widget.reviewApi != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+                  child: Card(
+                    child: ListTile(
+                      leading: StarRow(rating: widget.card.rating, size: 18),
+                      title: Text(ratingLabel(widget.card.rating, widget.card.ratingCount)),
+                      subtitle: const Text('Read what customers say'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(builder: (_) => SalonReviewsScreen(api: widget.reviewApi!, salonId: profile.id, salonName: profile.name)),
+                      ),
+                    ),
+                  ),
+                ),
               Padding(padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.sm), child: Text('Services', style: Theme.of(context).textTheme.titleLarge)),
               if (catalog.isEmpty)
                 const Padding(padding: EdgeInsets.all(AppSpacing.lg), child: Text('This salon has not published any bookable services yet.'))

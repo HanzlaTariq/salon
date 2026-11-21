@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, CreditCard, Landmark, LayoutDashboard, LogOut, Menu, Palette, Receipt, Scissors, ShieldCheck, Users, X } from 'lucide-react';
+import { BarChart3, CreditCard, Landmark, LayoutDashboard, LogOut, Menu, Palette, Receipt, Scissors, Star, ShieldCheck, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
@@ -10,6 +10,7 @@ const nav = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true, roles: null as string[] | null },
   { to: '/analytics', label: 'Analytics', icon: BarChart3, end: false, roles: ['SUPER_ADMIN', 'SUPPORT', 'FINANCE'] },
   { to: '/salons', label: 'Salons', icon: Scissors, end: false, roles: ['SUPER_ADMIN', 'SUPPORT'] },
+  { to: '/reviews', label: 'Reviews', icon: Star, end: false, roles: ['SUPER_ADMIN', 'SUPPORT'] },
   { to: '/payments', label: 'Payments', icon: Receipt, end: false, roles: ['SUPER_ADMIN', 'FINANCE'] },
   { to: '/subscriptions', label: 'Subscriptions', icon: CreditCard, end: false, roles: ['SUPER_ADMIN', 'SUPPORT', 'FINANCE'] },
   { to: '/billing-settings', label: 'Billing settings', icon: Landmark, end: false, roles: ['SUPER_ADMIN', 'SUPPORT', 'FINANCE'] },

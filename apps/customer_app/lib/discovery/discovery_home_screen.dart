@@ -10,6 +10,9 @@ import 'discovery_api.dart';
 import 'discovery_controller.dart';
 import 'discovery_filters.dart';
 import 'discovery_models.dart';
+import '../reviews/favourites_screen.dart';
+import '../reviews/my_reviews_screen.dart';
+import '../reviews/review_api.dart';
 import 'filters_sheet.dart';
 import 'location_service.dart';
 import 'salon_card.dart';
@@ -31,6 +34,7 @@ class DiscoveryHomeScreen extends StatefulWidget {
 class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
   late final DiscoveryController _c = DiscoveryController(api: widget.api, location: widget.location ?? GeolocatorLocationService());
   late final BookingApi _booking = BookingApi(repository: widget.repository);
+  late final ReviewApi _reviews = ReviewApi(repository: widget.repository);
   late final NotificationApi _notifications = NotificationApi(repository: widget.repository);
   final _scroll = ScrollController();
   final _search = TextEditingController();
@@ -43,6 +47,22 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
       if (_scroll.hasClients && _scroll.position.extentAfter < 400) _c.loadMore();
     });
     _c.start();
+  }
+
+  void _openFavourites() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => FavouritesScreen(
+          api: _reviews,
+          onOpen: (ctx, fav) {
+            // Only the fields the profile needs; everything else is loaded from the server there.
+            final card = SalonCard.fromJson({'id': fav.salonId, 'name': fav.name, 'city': fav.city, 'area': fav.area, 'rating': fav.rating, 'ratingCount': fav.ratingCount});
+            Navigator.push(ctx, MaterialPageRoute<void>(builder: (_) => SalonProfileScreen(api: widget.api, bookingApi: _booking, card: card, reviewApi: _reviews)));
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -107,14 +127,26 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
               IconButton(
                 tooltip: 'Scan salon QR',
                 icon: const Icon(Icons.qr_code_scanner),
-                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ScanSalonScreen(api: widget.api, bookingApi: _booking))),
+                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ScanSalonScreen(api: widget.api, bookingApi: _booking, reviewApi: _reviews))),
               ),
               IconButton(
                 tooltip: 'My bookings',
                 icon: const Icon(Icons.event_note_outlined),
                 onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => MyBookingsScreen(api: _booking, discovery: widget.api))),
               ),
-              IconButton(tooltip: 'Sign out', icon: const Icon(Icons.logout), onPressed: widget.repository.logout),
+              PopupMenuButton<String>(
+                tooltip: 'More',
+                onSelected: (v) {
+                  if (v == 'favourites') _openFavourites();
+                  if (v == 'reviews') Navigator.push(context, MaterialPageRoute<void>(builder: (_) => MyReviewsScreen(api: _reviews)));
+                  if (v == 'signout') widget.repository.logout();
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'favourites', child: ListTile(leading: Icon(Icons.favorite_border), title: Text('Favourite salons'))),
+                  PopupMenuItem(value: 'reviews', child: ListTile(leading: Icon(Icons.rate_review_outlined), title: Text('My reviews'))),
+                  PopupMenuItem(value: 'signout', child: ListTile(leading: Icon(Icons.logout), title: Text('Sign out'))),
+                ],
+              ),
             ],
           ),
           body: Column(children: [
@@ -190,7 +222,7 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
           final salon = _c.items[i];
           return SalonCardTile(
             salon: salon,
-            onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SalonProfileScreen(api: widget.api, bookingApi: _booking, card: salon))),
+            onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SalonProfileScreen(api: widget.api, bookingApi: _booking, card: salon, reviewApi: _reviews))),
           );
         },
       ),

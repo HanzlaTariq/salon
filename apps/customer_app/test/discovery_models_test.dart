@@ -29,12 +29,13 @@ void main() {
         {'city': 'Lahore', 'salons': 3, 'areas': [{'area': 'DHA', 'salons': 1}]},
       ],
       'salonTypes': ['MEN', 'LADIES', 'UNISEX'],
-      'sorts': ['nearest', 'price_low', 'newest', 'name'],
+      'sorts': ['nearest', 'price_low', 'rating', 'newest', 'name'],
       'radiusKm': {'default': 10, 'max': 100},
       'availabilityHorizonDays': 14,
     });
     expect(o.cities.single.areas.single.area, 'DHA');
-    expect(o.sorts, isNot(contains('rating')));
+    expect(o.sorts, contains('rating'));
+    expect(o.sorts, isNot(contains('popular')));
     expect(o.radiusDefaultKm, 10);
   });
 

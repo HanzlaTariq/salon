@@ -156,8 +156,8 @@ d('Phase 7: discovery - search, nearby, filters, availability preview, listing r
     expect(c.salons).toBe(3);
     expect(c.areas).toEqual(expect.arrayContaining([{ area: 'Gulberg', salons: 2 }, { area: 'DHA', salons: 1 }]));
     expect(r.body.data.cities.some((x: { city: string }) => x.city === `${city}-pending`)).toBe(false);
-    expect(r.body.data.sorts).toEqual(['nearest', 'price_low', 'newest', 'name']);
-    expect(r.body.data.sorts).not.toContain('rating');
+    expect(r.body.data.sorts).toEqual(['nearest', 'price_low', 'rating', 'newest', 'name']);
+    expect(r.body.data.sorts).not.toContain('popular');
     expect(r.body.data.radiusKm).toEqual({ default: 10, max: 100 });
   });
 
@@ -323,7 +323,7 @@ d('Phase 7: discovery - search, nearby, filters, availability preview, listing r
     await search('pageSize=31').expect(400);
     await search('page=0').expect(400);
     await search('status=PENDING').expect(400); // mass-assignment style probe
-    await search('sort=rating').expect(400); // not offered until reviews exist
+    await search('sort=popular').expect(400); // not offered (rating is, since Phase 14)
     await search(`q=${'x'.repeat(81)}`).expect(400);
     await search('q=%3Cscript%3E').expect(400);
   });

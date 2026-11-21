@@ -6,6 +6,8 @@ import '../queue/queue_api.dart';
 import '../queue/queue_screen.dart';
 import '../reports/reports_api.dart';
 import '../reports/staff_report_screen.dart';
+import '../reviews/reviews_api.dart';
+import '../reviews/staff_reviews_screen.dart';
 import 'team_api.dart';
 import 'team_models.dart';
 
@@ -118,6 +120,12 @@ class _StaffHomeState extends State<StaffHome> {
                               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => StaffReportScreen(api: ReportsApi(repository: widget.repository)))),
                               icon: const Icon(Icons.insights_outlined),
                               label: const Text('My performance'),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            OutlinedButton.icon(
+                              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => StaffReviewsScreen(api: ReviewsApi(repository: widget.repository)))),
+                              icon: const Icon(Icons.star_outline_rounded),
+                              label: const Text('My reviews'),
                             ),
                             const SizedBox(height: AppSpacing.sm),
                             OutlinedButton.icon(

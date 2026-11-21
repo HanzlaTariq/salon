@@ -6,15 +6,17 @@ import '../booking/booking_api.dart';
 import 'discovery_api.dart';
 import 'discovery_models.dart';
 import 'qr_models.dart';
+import '../reviews/review_api.dart';
 import 'salon_profile_screen.dart';
 
 /// Scan a salon's QR code (or type the code printed on its poster) and open the salon. Works without location.
 /// Camera permission is asked by the system when this screen opens; if it is denied, typing the code still works.
 class ScanSalonScreen extends StatefulWidget {
-  const ScanSalonScreen({super.key, required this.api, required this.bookingApi});
+  const ScanSalonScreen({super.key, required this.api, required this.bookingApi, this.reviewApi});
 
   final DiscoveryApi api;
   final BookingApi bookingApi;
+  final ReviewApi? reviewApi;
 
   @override
   State<ScanSalonScreen> createState() => _ScanSalonScreenState();
@@ -62,7 +64,7 @@ class _ScanSalonScreenState extends State<ScanSalonScreen> {
         'id': scanned.salonId, 'name': scanned.name, 'salonType': scanned.salonType, 'city': scanned.city, 'area': scanned.area,
       });
       await Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => SalonProfileScreen(api: widget.api, bookingApi: widget.bookingApi, card: card)),
+        MaterialPageRoute<void>(builder: (_) => SalonProfileScreen(api: widget.api, bookingApi: widget.bookingApi, card: card, reviewApi: widget.reviewApi)),
       );
     } on ApiException catch (e) {
       if (mounted) {

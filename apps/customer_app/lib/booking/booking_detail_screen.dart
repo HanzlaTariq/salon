@@ -7,6 +7,8 @@ import '../discovery/discovery_api.dart';
 import '../discovery/format.dart';
 import 'booking_api.dart';
 import 'booking_models.dart';
+import '../reviews/review_api.dart';
+import '../reviews/my_reviews_screen.dart';
 import 'confirm_booking_screen.dart';
 import 'live_status.dart';
 import 'reschedule_screen.dart';
@@ -185,6 +187,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               ),
             ],
             const SizedBox(height: AppSpacing.xl),
+            if (b.status == 'COMPLETED') ...[
+              FilledButton.icon(
+                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => MyReviewsScreen(api: ReviewApi(repository: widget.api.repository)))),
+                icon: const Icon(Icons.star_outline_rounded),
+                label: const Text('Rate your visit'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
             if (b.status == 'CONFIRMED') ...[
               OutlinedButton(onPressed: _busy || !b.canReschedule ? null : () => _reschedule(b), child: Text('Change time (${b.reschedulesLeft} left)')),
               const SizedBox(height: AppSpacing.sm),

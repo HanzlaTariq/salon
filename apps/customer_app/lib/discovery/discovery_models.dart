@@ -49,7 +49,7 @@ class SalonCard {
   /// Null when the search carried no location or the salon has no coordinates.
   final double? distanceKm;
 
-  /// Null until reviews exist (Phase 14). Never shown as a number the server did not send.
+  /// Average of published reviews; null while the salon has none. Never shown as a number the server did not send.
   final double? rating;
   final int ratingCount;
   final String priceFrom;
@@ -112,7 +112,7 @@ class DiscoveryOptions {
   final List<CityOption> cities;
   final List<String> salonTypes;
 
-  /// Only the orders the server can answer truthfully (no rating / popularity yet).
+  /// Only the orders the server can answer truthfully (rating since Phase 14; no popularity yet).
   final List<String> sorts;
   final int radiusDefaultKm;
   final int radiusMaxKm;

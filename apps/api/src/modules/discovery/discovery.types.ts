@@ -20,8 +20,8 @@ export const DISCOVERY_LIMITS = {
   maxPrice: 1_000_000,
 } as const;
 
-/** Supported sort orders. "highest rating" (Phase 14), "most popular" and "earliest available" (Phase 8) need data that does not exist yet and are not offered. */
-export const DISCOVERY_SORTS = ['nearest', 'price_low', 'newest', 'name'] as const;
+/** Supported sort orders. "rating" arrived with reviews (Phase 14). "most popular" and "earliest available" are still not offered. */
+export const DISCOVERY_SORTS = ['nearest', 'price_low', 'rating', 'newest', 'name'] as const;
 export type DiscoverySort = (typeof DISCOVERY_SORTS)[number];
 
 // ------------------------------------------------------------------ nearby search

@@ -12,6 +12,7 @@ import { BillingSettingsPage } from './features/billing/BillingSettingsPage';
 import { PaymentsPage } from './features/billing/PaymentsPage';
 import { SubscriptionDetailPage } from './features/billing/SubscriptionDetailPage';
 import { SubscriptionsPage } from './features/billing/SubscriptionsPage';
+import { ReviewsPage } from './features/reviews/ReviewsPage';
 import { SecurityPage } from './features/security/SecurityPage';
 import { SalonDetailPage } from './features/salons/SalonDetailPage';
 import { SalonsPage } from './features/salons/SalonsPage';
@@ -47,6 +48,7 @@ createRoot(document.getElementById('root')!).render(
               <Route element={<AppShell />}>
                 <Route index element={<OverviewPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
+                <Route path="reviews" element={<ReviewsPage />} />
                 <Route path="salons" element={<SalonsPage />} />
                 <Route path="salons/:id" element={<SalonDetailPage />} />
                 <Route path="payments" element={<PaymentsPage />} />

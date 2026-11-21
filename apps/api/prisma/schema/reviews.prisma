@@ -1,0 +1,104 @@
+// Phase 14: reviews, ratings, moderation and favourite salons.
+// Hand-written SQL in migrations/20261121000000_reviews_phase14 is the source of truth for CHECK constraints, the guard triggers
+// (30-day review window, 7-day edit window, one review per appointment, who may change which column), RLS and grants (no DELETE for the
+// runtime role on reviews / service ratings / reports; the two stats tables are read-only for it and written by a trigger only).
+// These models mirror the columns for typed access; all Phase 14 queries are parameterized $queryRaw in reviews.repository.ts.
+
+model Review {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId         String    @map("salon_id") @db.Uuid
+  appointmentId   String    @unique @map("appointment_id") @db.Uuid
+  customerUserId  String    @map("customer_user_id") @db.Uuid
+  staffId         String    @map("staff_id") @db.Uuid
+  /// Snapshot such as "Sara K.": other people never read the users table.
+  authorName      String    @map("author_name") @db.VarChar(60)
+  salonRating     Int       @map("salon_rating") @db.SmallInt
+  staffRating     Int?      @map("staff_rating") @db.SmallInt
+  comment         String?   @db.VarChar(1000)
+  /// PUBLISHED | HIDDEN (CHECK).
+  status          String    @default("PUBLISHED") @db.VarChar(10)
+  hiddenReason    String?   @map("hidden_reason") @db.VarChar(300)
+  hiddenBy        String?   @map("hidden_by") @db.Uuid
+  hiddenAt        DateTime? @map("hidden_at") @db.Timestamptz(6)
+  ownerResponse   String?   @map("owner_response") @db.VarChar(500)
+  ownerResponseAt DateTime? @map("owner_response_at") @db.Timestamptz(6)
+  ownerResponseBy String?   @map("owner_response_by") @db.Uuid
+  editedAt        DateTime? @map("edited_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([salonId, id], map: "reviews_salon_id_id_key")
+  @@map("reviews")
+}
+
+model ReviewService {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId     String   @map("salon_id") @db.Uuid
+  reviewId    String   @map("review_id") @db.Uuid
+  serviceId   String   @map("service_id") @db.Uuid
+  /// Copied from the appointment's booking snapshot by a trigger.
+  serviceName String   @map("service_name") @db.VarChar(120)
+  rating      Int      @db.SmallInt
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([reviewId, serviceId], map: "review_services_unique")
+  @@map("review_services")
+}
+
+model ReviewReport {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salonId        String    @map("salon_id") @db.Uuid
+  reviewId       String    @map("review_id") @db.Uuid
+  reportedBy     String    @map("reported_by") @db.Uuid
+  /// OFFENSIVE | SPAM | FAKE | PRIVATE_INFO | OTHER (CHECK).
+  reason         String    @db.VarChar(12)
+  details        String?   @db.VarChar(500)
+  /// OPEN | DISMISSED | ACTIONED (CHECK). At most one OPEN report per review (partial unique index).
+  status         String    @default("OPEN") @db.VarChar(10)
+  resolvedBy     String?   @map("resolved_by") @db.Uuid
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(6)
+  resolutionNote String?   @map("resolution_note") @db.VarChar(300)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("review_reports")
+}
+
+/// Star counters kept by the `reviews_stats_after` trigger from PUBLISHED reviews. `reviewCount` and `ratingAvg` are GENERATED columns
+/// (read-only): never write them from the client.
+model SalonRatingStats {
+  salonId     String   @id @map("salon_id") @db.Uuid
+  star1       Int      @default(0) @map("star_1")
+  star2       Int      @default(0) @map("star_2")
+  star3       Int      @default(0) @map("star_3")
+  star4       Int      @default(0) @map("star_4")
+  star5       Int      @default(0) @map("star_5")
+  reviewCount Int?     @default(dbgenerated()) @map("review_count")
+  ratingAvg   Decimal? @default(dbgenerated()) @map("rating_avg") @db.Decimal(3, 2)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("salon_rating_stats")
+}
+
+model StaffRatingStats {
+  staffId     String   @id @map("staff_id") @db.Uuid
+  salonId     String   @map("salon_id") @db.Uuid
+  star1       Int      @default(0) @map("star_1")
+  star2       Int      @default(0) @map("star_2")
+  star3       Int      @default(0) @map("star_3")
+  star4       Int      @default(0) @map("star_4")
+  star5       Int      @default(0) @map("star_5")
+  reviewCount Int?     @default(dbgenerated()) @map("review_count")
+  ratingAvg   Decimal? @default(dbgenerated()) @map("rating_avg") @db.Decimal(3, 2)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("staff_rating_stats")
+}
+
+model CustomerFavourite {
+  customerUserId String   @map("customer_user_id") @db.Uuid
+  salonId        String   @map("salon_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([customerUserId, salonId])
+  @@map("customer_favourites")
+}

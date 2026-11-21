@@ -9,6 +9,7 @@ import 'salon_card.dart';
 const _sortLabels = {
   'nearest': 'Nearest first',
   'price_low': 'Lowest price',
+  'rating': 'Highest rated',
   'newest': 'Newest salons',
   'name': 'Name (A to Z)',
 };

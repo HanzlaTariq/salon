@@ -1,0 +1,61 @@
+PHASE 14: REVIEWS, RATINGS, CUSTOMER HISTORY, FAVOURITES, MODERATION. Extract this zip over the project root (same paths). Only NEW and UPDATED files.
+
+NEW
+  apps/api/prisma/schema/migrations/20261121000000_reviews_phase14/migration.sql
+  apps/api/prisma/schema/reviews.prisma
+  apps/api/src/modules/reviews/reviews.types.ts
+  apps/api/src/modules/reviews/reviews.types.spec.ts
+  apps/api/src/modules/reviews/reviews.repository.ts
+  apps/api/src/modules/reviews/reviews.views.ts
+  apps/api/src/modules/reviews/customer-reviews.service.ts
+  apps/api/src/modules/reviews/public-reviews.service.ts
+  apps/api/src/modules/reviews/salon-reviews.service.ts
+  apps/api/src/modules/reviews/admin-reviews.service.ts
+  apps/api/src/modules/reviews/favourites.service.ts
+  apps/api/src/modules/reviews/reviews.controllers.ts
+  apps/api/src/modules/reviews/reviews.module.ts
+  apps/api/src/modules/reviews/dto/reviews.dto.ts
+  apps/api/test/reviews.e2e-spec.ts
+  apps/admin-web/src/features/reviews/ReviewsPage.tsx
+  apps/admin-web/src/features/reviews/types.ts
+  apps/admin-web/src/features/reviews/types.test.ts
+  apps/customer_app/lib/reviews/review_models.dart
+  apps/customer_app/lib/reviews/review_api.dart
+  apps/customer_app/lib/reviews/review_widgets.dart
+  apps/customer_app/lib/reviews/write_review_screen.dart
+  apps/customer_app/lib/reviews/my_reviews_screen.dart
+  apps/customer_app/lib/reviews/salon_reviews_screen.dart
+  apps/customer_app/lib/reviews/favourites_screen.dart
+  apps/customer_app/test/review_models_test.dart
+  apps/business_app/lib/reviews/reviews_models.dart
+  apps/business_app/lib/reviews/reviews_api.dart
+  apps/business_app/lib/reviews/reviews_widgets.dart
+  apps/business_app/lib/reviews/owner_reviews_screen.dart
+  apps/business_app/lib/reviews/customers_screen.dart
+  apps/business_app/lib/reviews/staff_reviews_screen.dart
+  apps/business_app/test/reviews_models_test.dart
+  docs/PHASE14.md
+  PHASE14_CHANGES.txt
+
+UPDATED (small edits to existing files; complete files are in the zip)
+  apps/api/src/app.module.ts                                  (+ ReviewsModule)
+  apps/api/src/common/auth/permissions.ts                     (+ reviews.read, reviews.moderate; Support gets read)
+  apps/api/src/modules/discovery/discovery.types.ts           ("rating" sort)
+  apps/api/src/modules/discovery/discovery.repository.ts      (rating join + sort)
+  apps/api/src/modules/discovery/discovery.service.ts         (card shows real rating)
+  apps/api/test/discovery.e2e-spec.ts                         (sort list)
+  apps/api/test/auth.e2e-spec.ts                              (public-route allowlist: reviews route)
+  apps/admin-web/src/main.tsx                                 (/reviews route)
+  apps/admin-web/src/app/AppShell.tsx                         (Reviews menu item)
+  apps/customer_app/lib/discovery/salon_profile_screen.dart   (heart + reviews entry)
+  apps/customer_app/lib/discovery/scan_salon_screen.dart      (passes review client)
+  apps/customer_app/lib/discovery/discovery_home_screen.dart  (menu: favourites, my reviews)
+  apps/customer_app/lib/discovery/filters_sheet.dart          ("Highest rated")
+  apps/customer_app/lib/discovery/discovery_models.dart       (comments only)
+  apps/customer_app/lib/booking/booking_detail_screen.dart    ("Rate your visit")
+  apps/customer_app/test/discovery_models_test.dart           (sort list)
+  apps/business_app/lib/salon/salon_home.dart                 ("Reviews and customers")
+  apps/business_app/lib/team/staff_home.dart                  ("My reviews")
+  docs/security/risk-register.md                              (Phase 14 section)
+
+NO new npm or Flutter packages.
