@@ -12,7 +12,7 @@ dependencies:
   flutter_core:
     path: ../../packages/flutter_core
   http: ^1.2.2
-  geolocator: ^13.0.1
+  geolocator: ^14.0.2
   # Phase 11: scan a salon's QR code.
   mobile_scanner: ^6.0.2
 
