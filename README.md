@@ -53,3 +53,10 @@ Requires Flutter >= 3.27.
 
 ## Phase 2 (authentication)
 See `docs/PHASE2.md` for setup (`MFA_ENCRYPTION_KEY`, `JWT_ACCESS_SECRET`, `npm run admin:create`) and tests.
+
+## Phase 16 (deployment and release)
+* Production deployment (Docker + Caddy + Redis, Supabase as database): `docs/DEPLOYMENT.md`; all variables: `docs/ENVIRONMENT.md`; go-live list: `docs/PRODUCTION_CHECKLIST.md`.
+* Check the production environment before each deploy: `docker compose -f infra/deploy/docker-compose.prod.yml run --rm cli npm run preflight`; after: `infra/deploy/smoke-test.sh` (or `.ps1`).
+* Android and iOS release builds: `docs/RELEASE_MOBILE.md` (`node tool/prepare-mobile-release.mjs customer|business`).
+* Paid Supabase plan, PITR and moving from the Free project: `docs/SUPABASE_PRODUCTION.md`. Summary and verification: `docs/PHASE16.md`.
+

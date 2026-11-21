@@ -1,0 +1,8 @@
+# Copy to android/key.properties (git-ignored). NEVER commit it or the keystore.
+# Create the upload keystore ONCE and back it up in two places (password manager + offline copy):
+#   keytool -genkey -v -keystore android/app/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+storePassword=
+keyPassword=
+keyAlias=upload
+# Relative to android/app/
+storeFile=upload-keystore.jks

@@ -1,0 +1,101 @@
+# Production stack on ONE Linux server: Caddy (HTTPS + admin web) -> API -> Redis. The database is Supabase (not in this file).
+#
+#   cd infra/deploy
+#   cp .env.example .env ; cp .env.api.example .env.api ; cp .env.migrate.example .env.migrate   (then fill them in)
+#   docker compose -f docker-compose.prod.yml run --rm cli npm run preflight
+#   docker compose -f docker-compose.prod.yml run --rm migrate
+#   docker compose -f docker-compose.prod.yml up -d --build
+# Full guide: docs/DEPLOYMENT.md
+name: salon-platform
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in infra/deploy/.env}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  api:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+      target: runtime
+    image: salon-api:${RELEASE:-latest}
+    init: true
+    restart: unless-stopped
+    env_file: .env.api
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    expose:
+      - "3000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/admin-web/Dockerfile
+    image: salon-web:${RELEASE:-latest}
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in infra/deploy/.env}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:?set ADMIN_DOMAIN in infra/deploy/.env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in infra/deploy/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # ---- one-off commands (not started by `up`): docker compose -f docker-compose.prod.yml run --rm <service>
+  migrate:
+    profiles: ["tools"]
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+      target: tools
+    image: salon-api-tools:${RELEASE:-latest}
+    env_file: .env.migrate
+    command: ["npx", "prisma", "migrate", "deploy"]
+
+  cli:
+    profiles: ["tools"]
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+      target: tools
+    image: salon-api-tools:${RELEASE:-latest}
+    env_file: .env.api
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    command: ["npm", "run", "preflight"]
+
+volumes:
+  redisdata:
+  caddy_data:
+  caddy_config:

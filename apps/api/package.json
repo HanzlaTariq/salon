@@ -19,7 +19,8 @@
     "audit": "npm audit --omit=dev",
     "admin:create": "ts-node --transpile-only src/cli/create-admin.ts",
     "maintenance:run": "ts-node --transpile-only src/cli/maintenance.ts",
-    "storage:backup": "ts-node --transpile-only src/cli/backup-storage.ts"
+    "storage:backup": "ts-node --transpile-only src/cli/backup-storage.ts",
+    "preflight": "ts-node --transpile-only src/cli/preflight.ts"
   },
   "prisma": {
     "schema": "prisma/schema"

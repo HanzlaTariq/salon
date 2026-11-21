@@ -1,0 +1,53 @@
+PHASE 16 CHANGES: deployment, release builds, production documentation
+Extract over your project folder (same paths). Then follow docs/PHASE16.md section 3 (checks) and docs/DEPLOYMENT.md (server).
+No database migration in this phase. No new npm dependency.
+
+NEW:
+  .dockerignore
+  .github/workflows/mobile-release.yml
+  apps/admin-web/Dockerfile
+  apps/admin-web/public/favicon.svg
+  apps/admin-web/public/robots.txt
+  apps/api/.dockerignore
+  apps/api/Dockerfile
+  apps/api/src/cli/preflight.ts
+  apps/api/src/config/preflight.spec.ts
+  apps/api/src/config/preflight.ts
+  apps/customer_app/android/app/proguard-rules.pro
+  apps/customer_app/android/key.properties.example
+  docs/DEPLOYMENT.md
+  docs/ENVIRONMENT.md
+  docs/PHASE16.md
+  docs/PRODUCTION_CHECKLIST.md
+  docs/RELEASE_MOBILE.md
+  docs/SUPABASE_PRODUCTION.md
+  infra/deploy/.env.api.example
+  infra/deploy/.env.example
+  infra/deploy/.env.migrate.example
+  infra/deploy/Caddyfile
+  infra/deploy/docker-compose.prod.yml
+  infra/deploy/smoke-test.ps1
+  infra/deploy/smoke-test.sh
+  tool/prepare-mobile-release.mjs
+  tool/prepare-mobile-release.test.mjs
+
+UPDATED:
+  .github/workflows/ci.yml                      (+ deploy-artifacts, mobile-release-script jobs; shellcheck covers smoke-test.sh)
+  .gitignore                                    (allows *.example env templates; ignores key.properties, *.jks, *.keystore)
+  README.md                                     (Phase 16 pointers)
+  apps/admin-web/index.html                     (favicon, noindex, theme-color, noscript)
+  apps/api/package.json                         (+ "preflight" script)
+  apps/business_app/lib/main.dart               (AuthConfig.assertReleaseReady() as first line of main)
+  apps/customer_app/android/app/build.gradle.kts            (applicationId, release signing, R8)
+  apps/customer_app/android/app/src/main/AndroidManifest.xml (label, notifications permission, no cleartext, no backup)
+  apps/customer_app/ios/Runner.xcodeproj/project.pbxproj     (bundle id)
+  apps/customer_app/ios/Runner/Info.plist                    (display name, export compliance, push mode)
+  apps/customer_app/lib/main.dart               (AuthConfig.assertReleaseReady() as first line of main)
+  docs/security/risk-register.md                (+ Phase 16 section R16-1 .. R16-15)
+  packages/flutter_core/lib/src/auth/auth_config.dart        (+ assertReleaseReady)
+
+DECISIONS FOR YOU (nothing is silently decided):
+  1. Android applicationId / iOS bundle id: defaults pk.salonplatform.customer / pk.salonplatform.business. Permanent after the first
+     Google Play upload. Change them in tool/prepare-mobile-release.mjs (APPS) before uploading. (R16-8)
+  2. Hosting: assumed ONE Linux server with Docker + Caddy. Tell me if you use another host.
+  3. Account deletion (store + privacy requirement) is not built. (R16-9)

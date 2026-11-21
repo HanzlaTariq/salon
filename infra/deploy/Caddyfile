@@ -1,0 +1,51 @@
+# Reverse proxy + automatic HTTPS (Let's Encrypt) for the whole platform.
+# Domains and the ACME contact come from infra/deploy/.env (API_DOMAIN, ADMIN_DOMAIN, ACME_EMAIL).
+{
+	email {$ACME_EMAIL}
+}
+
+# ---- Public API (mobile apps, salon QR landing pages /s/<code>)
+{$API_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 12MB
+	}
+	header -Server
+	reverse_proxy api:3000 {
+		health_uri /api/v1/health
+		health_interval 30s
+	}
+}
+
+# ---- Admin web (static files) and /api on the SAME origin (first-party refresh cookie, no CORS needed)
+{$ADMIN_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 12MB
+	}
+	header -Server
+
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	handle {
+		root * /srv/admin
+		header {
+			Strict-Transport-Security "max-age=31536000; includeSubDomains"
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+			Referrer-Policy "no-referrer"
+			Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()"
+			X-Robots-Tag "noindex, nofollow"
+			# Google Fonts (index.html) and signed Supabase Storage image URLs (salon photos, receipts) are the only outside sources.
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		}
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@pages not path /assets/*
+		header @pages Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

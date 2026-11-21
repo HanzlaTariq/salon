@@ -80,5 +80,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: shellcheck the backup and restore scripts
-        run: shellcheck infra/backup/backup.sh infra/backup/restore-drill.sh
+      - name: shellcheck the backup, restore and smoke-test scripts
+        run: shellcheck infra/backup/backup.sh infra/backup/restore-drill.sh infra/deploy/smoke-test.sh
+
+  # ---- Phase 16: deployment artefacts must keep building
+  deploy-artifacts:
+    runs-on: ubuntu-latest
+    env:
+      REDIS_PASSWORD: ci_only_redis_password
+      API_DOMAIN: api.ci.invalid
+      ADMIN_DOMAIN: admin.ci.invalid
+      ACME_EMAIL: ci@ci.invalid
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the API image (runtime and tools targets)
+        run: |
+          docker build -f apps/api/Dockerfile --target runtime -t salon-api:ci apps/api
+          docker build -f apps/api/Dockerfile --target tools -t salon-api-tools:ci apps/api
+      - name: Build the admin web image
+        run: docker build -f apps/admin-web/Dockerfile -t salon-web:ci .
+      - name: Validate the Caddyfile
+        run: docker run --rm -e API_DOMAIN -e ADMIN_DOMAIN -e ACME_EMAIL -v "$PWD/infra/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+      - name: Validate the production compose file
+        working-directory: infra/deploy
+        run: |
+          cp .env.api.example .env.api
+          cp .env.migrate.example .env.migrate
+          docker compose -f docker-compose.prod.yml config --quiet
+
+  mobile-release-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node --test tool/prepare-mobile-release.test.mjs

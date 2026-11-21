@@ -12,6 +12,7 @@ import 'team/staff_home.dart';
 import 'team/team_api.dart';
 
 void main() {
+  AuthConfig.assertReleaseReady();
   final repository = AuthRepository(api: AuthApi());
   runApp(BusinessApp(
     repository: repository,

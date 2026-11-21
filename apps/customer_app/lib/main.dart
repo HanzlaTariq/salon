@@ -5,6 +5,7 @@ import 'discovery/discovery_api.dart';
 import 'discovery/discovery_home_screen.dart';
 
 void main() {
+  AuthConfig.assertReleaseReady();
   runApp(CustomerApp(repository: AuthRepository(api: AuthApi()), discoveryApi: DiscoveryApi()));
 }
 
