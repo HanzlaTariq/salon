@@ -26,7 +26,7 @@ jobs:
       TEST_DATABASE_URL: postgresql://salon_app:salon_app_dev_pw@localhost:5432/salon
       TEST_ADMIN_DATABASE_URL: postgresql://salon_migrator:salon_migrator_dev_pw@localhost:5432/salon
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: apps/api/package-lock.json }
       - run: npm ci
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: apps/admin-web } }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: apps/admin-web/package-lock.json }
       - run: npm ci
@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: packages/flutter_core } }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with: { channel: stable, cache: true }
       - run: flutter pub get
@@ -71,7 +71,7 @@ jobs:
   secrets-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@v2
         env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
@@ -79,7 +79,7 @@ jobs:
   backup-scripts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: shellcheck the backup, restore and smoke-test scripts
         run: shellcheck infra/backup/backup.sh infra/backup/restore-drill.sh infra/deploy/smoke-test.sh
 
@@ -92,7 +92,7 @@ jobs:
       ADMIN_DOMAIN: admin.ci.invalid
       ACME_EMAIL: ci@ci.invalid
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build the API image (runtime and tools targets)
         run: |
           docker build -f apps/api/Dockerfile --target runtime -t salon-api:ci apps/api
@@ -111,7 +111,7 @@ jobs:
   mobile-release-script:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: node --test tool/prepare-mobile-release.test.mjs
