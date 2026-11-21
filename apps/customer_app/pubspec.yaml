@@ -16,7 +16,7 @@ dependencies:
   # Phase 11: scan a salon's QR code.
   mobile_scanner: ^6.0.2
 
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^2.0.0
 
 dev_dependencies:
   flutter_test:
