@@ -13,7 +13,10 @@ describe('scrubText', () => {
   });
 
   it('removes a JWT', () => {
-    expect(scrubText('token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc_DEF-123 end')).toContain('[jwt]');
+    // built at run time on purpose: a JWT-shaped literal in the source trips secret scanners (gitleaks)
+    const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
+    const fake = [b64({ alg: 'HS256', typ: 'JWT' }), b64({ sub: 'not-a-real-user' }), 'c2lnbmF0dXJl'].join('.');
+    expect(scrubText(`token ${fake} end`)).toContain('[jwt]');
   });
 });
 
